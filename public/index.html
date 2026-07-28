@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hypnara — Demo</title>
+<style>
+  :root {
+    --bg: #0f1b2b;
+    --card: #16273d;
+    --accent: #7dd3c0;
+    --accent2: #f2b880;
+    --text: #eaf2f5;
+    --muted: #9fb3c8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(circle at top, #17293f, #0b1420 70%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 24px; }
+  header h1 { margin: 0; font-size: 28px; letter-spacing: 1px; }
+  header p { color: var(--muted); margin: 6px 0 0; font-size: 14px; }
+  .card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    margin-bottom: 20px;
+  }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
+  label:first-child { margin-top: 0; }
+  input, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #2a3f57;
+    background: #0f1e30;
+    color: var(--text);
+    font-size: 14px;
+  }
+  textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+  .row { display: flex; gap: 12px; }
+  .row > div { flex: 1; }
+  button {
+    margin-top: 20px;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #0b1420;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.6; cursor: default; }
+  #result { display: none; }
+  #result.show { display: block; }
+  #result h2 { font-size: 16px; color: var(--accent2); margin-top: 0; }
+  #suggestionBox { white-space: pre-wrap; line-height: 1.6; font-size: 14px; }
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    color: var(--muted);
+    border: 1px solid #2a3f57;
+    border-radius: 6px;
+    padding: 2px 8px;
+    margin-top: 10px;
+  }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 12px; }
+  .userbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-size: 13px; color: var(--muted); }
+  .userbar button { margin: 0; width: auto; padding: 6px 12px; font-size: 12px; background: transparent; border: 1px solid #2a3f57; color: var(--muted); }
+  .toggleLink { display: block; text-align: center; margin-top: 14px; color: var(--accent); cursor: pointer; font-size: 13px; }
+  .errorMsg { color: #f18b8b; font-size: 13px; margin-top: 10px; min-height: 16px; }
+  #authScreen.hide, #appScreen.hide { display: none; }
+  .historyItem { font-size: 12px; color: var(--muted); border-bottom: 1px solid #2a3f57; padding: 6px 0; }
+  .historyItem:last-child { border-bottom: none; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🌙 Hypnara</h1>
+      <p>Nhập thói quen hôm nay — nhận gợi ý nhỏ để cải thiện</p>
+    </header>
+
+    <div class="card" id="authScreen">
+      <form id="authForm">
+        <label for="authUsername">Username</label>
+        <input type="text" id="authUsername" autocomplete="username" required />
+        <label for="authPassword">Password</label>
+        <input type="password" id="authPassword" autocomplete="current-password" required />
+        <button type="submit" id="authSubmitBtn">Đăng nhập</button>
+        <div class="errorMsg" id="authError"></div>
+      </form>
+      <div class="toggleLink" id="authToggle">Chưa có tài khoản? Đăng ký</div>
+    </div>
+
+    <div id="appScreen" class="hide">
+    <div class="userbar">
+      <span>Xin chào, <strong id="userLabel"></strong></span>
+      <button id="logoutBtn">Đăng xuất</button>
+    </div>
+
+    <div class="card">
+      <form id="habitForm">
+        <label for="entryDate">Ngày nhập (chọn ngày quá khứ để nhập bù lịch sử)</label>
+        <input type="date" id="entryDate" />
+
+        <div class="row">
+          <div>
+            <label for="sleepHours">Giờ ngủ đêm qua (giờ)</label>
+            <input type="number" id="sleepHours" step="0.5" min="0" max="16" placeholder="vd: 6" />
+          </div>
+          <div>
+            <label for="exerciseMinutes">Vận động (phút)</label>
+            <input type="number" id="exerciseMinutes" step="5" min="0" placeholder="vd: 15" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="screenTime">Tổng thời gian màn hình (giờ)</label>
+            <input type="number" id="screenTime" step="0.5" min="0" placeholder="vd: 7" />
+          </div>
+          <div>
+            <label for="gameTime">Thời gian chơi game (giờ)</label>
+            <input type="number" id="gameTime" step="0.5" min="0" placeholder="vd: 3" />
+          </div>
+        </div>
+        <label for="mood">Tâm trạng hôm nay</label>
+        <input type="text" id="mood" placeholder="vd: hơi mệt, khó tập trung" />
+
+        <label for="schedule">Lịch trình / kế hoạch hôm nay</label>
+        <textarea id="schedule" placeholder="vd: 8h học, 12h ăn trưa, 14h-18h học thêm, tối rảnh..."></textarea>
+
+        <div class="row">
+          <button type="button" id="updateBtn">Cập nhật dữ liệu</button>
+          <button type="button" id="suggestBtn">Nhận gợi ý</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card" id="result">
+      <h2 id="resultTitle">Gợi ý cho bạn</h2>
+      <div id="suggestionBox">...</div>
+      <div class="tag" id="sourceTag"></div>
+    </div>
+
+    <div class="card" id="historyCard">
+      <h2 style="font-size:16px; color: var(--accent2); margin-top:0;">Lịch sử gần đây</h2>
+      <div id="historyList"></div>
+      <div id="historyPagination" style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; display:none;">
+        <button type="button" id="historyPrevBtn" style="margin:0; width:auto; padding:6px 14px; font-size:12px;">‹ Trước</button>
+        <span id="historyPageLabel" style="font-size:12px; color: var(--muted);"></span>
+        <button type="button" id="historyNextBtn" style="margin:0; width:auto; padding:6px 14px; font-size:12px;">Sau ›</button>
+      </div>
+    </div>
+    </div>
+
+    <footer>Demo giảng dạy — không phải lời khuyên y tế.</footer>
+  </div>
+
+<script>
+const authScreen = document.getElementById("authScreen");
+const appScreen = document.getElementById("appScreen");
+const authForm = document.getElementById("authForm");
+const authSubmitBtn = document.getElementById("authSubmitBtn");
+const authError = document.getElementById("authError");
+const authToggle = document.getElementById("authToggle");
+const userLabel = document.getElementById("userLabel");
+const logoutBtn = document.getElementById("logoutBtn");
+const historyList = document.getElementById("historyList");
+
+let authMode = "login"; // "login" | "register"
+
+authToggle.addEventListener("click", () => {
+  authMode = authMode === "login" ? "register" : "login";
+  authSubmitBtn.textContent = authMode === "login" ? "Đăng nhập" : "Đăng ký";
+  authToggle.textContent = authMode === "login" ? "Chưa có tài khoản? Đăng ký" : "Đã có tài khoản? Đăng nhập";
+  authError.textContent = "";
+});
+
+authForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  authError.textContent = "";
+  const username = document.getElementById("authUsername").value.trim();
+  const password = document.getElementById("authPassword").value;
+  try {
+    const res = await fetch(`/api/${authMode === "login" ? "login" : "register"}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      authError.textContent = data.error || "Có lỗi xảy ra";
+      return;
+    }
+    enterApp(data.username);
+  } catch (err) {
+    authError.textContent = "Không gọi được server.";
+  }
+});
+
+logoutBtn.addEventListener("click", async () => {
+  await fetch("/api/logout", { method: "POST" });
+  appScreen.classList.add("hide");
+  authScreen.classList.remove("hide");
+  authForm.reset();
+});
+
+const historyPagination = document.getElementById("historyPagination");
+const historyPrevBtn = document.getElementById("historyPrevBtn");
+const historyNextBtn = document.getElementById("historyNextBtn");
+const historyPageLabel = document.getElementById("historyPageLabel");
+const HISTORY_PAGE_SIZE = 10;
+let historyPage = 1;
+
+async function loadHistory(page = 1) {
+  historyPage = page;
+  const res = await fetch(`/api/habits?page=${page}&pageSize=${HISTORY_PAGE_SIZE}`);
+  const data = await res.json();
+  const habits = data.habits || [];
+  historyList.innerHTML = habits.length
+    ? habits
+        .map(
+          (h) =>
+            `<div class="historyItem">${h.date} — ngủ ${h.sleepHours || "?"}h, màn hình ${h.screenTime || "?"}h, game ${h.gameTime || "?"}h, vận động ${h.exerciseMinutes || "?"}p, tâm trạng: ${h.mood || "?"}</div>`
+        )
+        .join("")
+    : `<div class="historyItem">Chưa có dữ liệu.</div>`;
+
+  const totalPages = Math.max(1, Math.ceil((data.total || 0) / HISTORY_PAGE_SIZE));
+  historyPagination.style.display = totalPages > 1 ? "flex" : "none";
+  historyPageLabel.textContent = `Trang ${page}/${totalPages}`;
+  historyPrevBtn.disabled = page <= 1;
+  historyNextBtn.disabled = page >= totalPages;
+}
+
+historyPrevBtn.addEventListener("click", () => loadHistory(historyPage - 1));
+historyNextBtn.addEventListener("click", () => loadHistory(historyPage + 1));
+
+function enterApp(username) {
+  userLabel.textContent = username;
+  authScreen.classList.add("hide");
+  appScreen.classList.remove("hide");
+  loadHistory();
+}
+
+(async function checkSession() {
+  const res = await fetch("/api/me");
+  const data = await res.json();
+  if (data.username) enterApp(data.username);
+})();
+
+const updateBtn = document.getElementById("updateBtn");
+const suggestBtn = document.getElementById("suggestBtn");
+const result = document.getElementById("result");
+const resultTitle = document.getElementById("resultTitle");
+const suggestionBox = document.getElementById("suggestionBox");
+const sourceTag = document.getElementById("sourceTag");
+const entryDateInput = document.getElementById("entryDate");
+
+function todayClientStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+entryDateInput.max = todayClientStr();
+entryDateInput.value = todayClientStr();
+
+function collectPayload() {
+  return {
+    date: entryDateInput.value || todayClientStr(),
+    sleepHours: document.getElementById("sleepHours").value,
+    screenTime: document.getElementById("screenTime").value,
+    gameTime: document.getElementById("gameTime").value,
+    exerciseMinutes: document.getElementById("exerciseMinutes").value,
+    mood: document.getElementById("mood").value,
+    schedule: document.getElementById("schedule").value,
+  };
+}
+
+updateBtn.addEventListener("click", async () => {
+  updateBtn.disabled = true;
+  updateBtn.textContent = "Đang lưu...";
+  const payload = collectPayload();
+  try {
+    const res = await fetch("/api/habits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    resultTitle.textContent = "Cập nhật dữ liệu";
+    sourceTag.textContent = "";
+    suggestionBox.textContent = res.ok
+      ? `Đã lưu dữ liệu thói quen cho ngày ${payload.date}.`
+      : "Lỗi: " + (data.error || "Không lưu được");
+    result.classList.add("show");
+    if (res.ok) loadHistory(1);
+  } catch (err) {
+    resultTitle.textContent = "Cập nhật dữ liệu";
+    suggestionBox.textContent = "Không gọi được server. Kiểm tra lại kết nối.";
+    result.classList.add("show");
+  } finally {
+    updateBtn.disabled = false;
+    updateBtn.textContent = "Cập nhật dữ liệu";
+  }
+});
+
+suggestBtn.addEventListener("click", async () => {
+  suggestBtn.disabled = true;
+  suggestBtn.textContent = "Đang nghĩ...";
+  const payload = collectPayload();
+  try {
+    const res = await fetch("/api/suggest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    resultTitle.textContent = "Gợi ý cho bạn";
+    if (data.error) {
+      suggestionBox.textContent = "Lỗi: " + data.error;
+      sourceTag.textContent = "";
+    } else {
+      const s = data.suggestions;
+      suggestionBox.textContent = Array.isArray(s) ? s.map((x, i) => `${i + 1}. ${x}`).join("\n\n") : s;
+      sourceTag.textContent = "nguồn: " + (data.source || "ai");
+    }
+    result.classList.add("show");
+  } catch (err) {
+    resultTitle.textContent = "Gợi ý cho bạn";
+    suggestionBox.textContent = "Không gọi được server. Kiểm tra lại kết nối.";
+    result.classList.add("show");
+  } finally {
+    suggestBtn.disabled = false;
+    suggestBtn.textContent = "Nhận gợi ý";
+  }
+});
+</script>
+</body>
+</html>
