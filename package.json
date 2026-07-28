@@ -1,0 +1,16 @@
+{
+  "name": "hypnara-demo",
+  "version": "1.0.0",
+  "description": "Demo web app Hypnara - dang nhap, nhap thoi quen & lich trinh, nhan goi y AI (DeepSeek), luu tru bang Postgres.",
+  "main": "server.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "pg": "^8.22.0"
+  }
+}

@@ -1,93 +1,59 @@
-# demo-hypnara
+# Hypnara — Demo
 
+Web demo nhẹ: nhập thói quen & lịch trình hôm nay, nhận gợi ý cải thiện từ AI (DeepSeek).
 
+## Chạy thử (local)
 
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.com/tudinh686868/demo-hypnara.git
-git branch -M main
-git push -uf origin main
+```bash
+cd hypnara-demo
+cp .env.example .env
+# mở .env, dán DEEPSEEK_API_KEY (lấy tại https://platform.deepseek.com/api_keys)
 ```
 
-## Integrate with your tools
+**Cách 1 — chỉ cần Docker, không cần cài Node (khuyên dùng để demo nhanh):**
 
-* [Set up project integrations](https://gitlab.com/tudinh686868/demo-hypnara/-/settings/integrations)
+```bash
+docker-compose up --build
+```
 
-## Collaborate with your team
+Chạy cả Postgres lẫn app trong container, tự chờ Postgres sẵn sàng (healthcheck) rồi mới start app. Sửa code xong nhớ thêm `--build` để build lại image.
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+**Cách 2 — chỉ Postgres qua Docker, app chạy trực tiếp trên máy (tiện khi sửa code, có hot reload theo ý muốn):**
 
-## Test and Deploy
+```bash
+docker-compose up -d db   # chi khoi dong Postgres, khong khoi dong app container
+nvm use                   # neu dung nvm, chon dung Node version tu .nvmrc
+npm install
+npm start
+```
 
-Use the built-in continuous integration in GitLab.
+Không chạy đồng thời cả 2 cách — sẽ đụng port `3000`.
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+Mở trình duyệt: http://localhost:3000
 
-***
+Nếu chưa có API key, app vẫn chạy được — sẽ tự dùng gợi ý rule-based đơn giản thay vì gọi AI thật (đủ để demo giao diện và luồng, gắn key vào sau).
 
-# Editing this README
+## Cấu trúc
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+- `server.js` — HTTP server bằng Node core (`http`) + `pg` (Postgres client): vừa phục vụ frontend tĩnh (`public/`) vừa xử lý API, không có server FE riêng. Có route đăng nhập/đăng ký, lưu thói quen, và `POST /api/suggest` gọi DeepSeek API (model `deepseek-v4-flash`, endpoint OpenAI-compatible).
+- `public/index.html` — 1 trang duy nhất: màn hình đăng nhập/đăng ký, form nhập thói quen + hiển thị gợi ý + lịch sử (HTML/CSS/JS thuần, không cần build).
+- `Dockerfile` — build image cho app (Node alpine, không bake `.env`/secret vào image).
+- `docker-compose.yml` — service `db` (Postgres, image `postgres:16-alpine`, data giữ qua volume `pgdata`) + service `app` (build từ `Dockerfile`, chờ `db` healthy mới start, nhận `DATABASE_URL` trỏ tới hostname `db` trong mạng Docker Compose).
+- `.env.example` — mẫu biến môi trường (API key, port, `DATABASE_URL` dùng khi chạy app trực tiếp trên host — trỏ `localhost`).
 
-## Suggestions for a good README
+## Đăng nhập, lưu lịch sử & Postgres (demo giảng dạy — KHÔNG có bảo mật thật)
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+- `POST /api/register`, `POST /api/login`: username/password lưu **plaintext** trong bảng `users`, session là cookie **không ký, không mã hoá, không hết hạn**. Đây là lựa chọn có chủ đích cho mục đích giảng dạy, không phải thiếu sót — xem comment `ponytail:` trong `server.js` để biết cần nâng cấp gì (hash password, cookie ký) nếu dùng thật.
+- `POST /api/habits`: lưu thói quen hôm nay theo tài khoản vào bảng `habits`, ghi đè nếu nhập lại trong ngày (`ON CONFLICT (username, date) DO UPDATE`).
+- `POST /api/suggest`: yêu cầu đã đăng nhập, gộp thêm 10 bản ghi lịch sử gần nhất (theo ngày) của user (query từ Postgres) vào prompt gửi AI (`HISTORY_DAYS` trong `server.js`).
+- Server tự tạo bảng (`CREATE TABLE IF NOT EXISTS`) khi khởi động, không cần chạy migration riêng — xem `initSchema()` trong `server.js`.
 
-## Name
-Choose a self-explaining name for your project.
+## Deploy nhanh (tuỳ chọn)
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Có thể deploy lên Railway hoặc Render (hỗ trợ Node/Express + Postgres managed trực tiếp, free tier đủ cho demo). Nhớ set biến môi trường `DEEPSEEK_API_KEY` và `DATABASE_URL` trên nền tảng deploy — không commit `.env` thật lên git.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## Ghi chú cho buổi dạy
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+- Buổi 2 (Ứng dụng web được tạo ra như thế nào): mở F12 trên trang demo để chỉ frontend (`index.html`) và request tới `/api/suggest` (phần "ẩn" phía sau).
+- Buổi 4 (AI & cá nhân hóa): chỉ ra `server.js` — dữ liệu người dùng nhập + lịch sử nhiều ngày (query Postgres) → prompt gửi AI (`buildUserPrompt`) → gợi ý trả về, minh hoạ vòng lặp cá nhân hóa theo thời gian.
+- Buổi 8 (Đạo đức): giờ dữ liệu ĐÃ được lưu thật (Postgres, username/password plaintext, session không mã hoá) — điểm để thảo luận cụ thể: "nếu đây là app thật, cần đổi gì để bảo vệ dữ liệu người dùng?" (hash password, mã hoá session, ai được xem lịch sử của ai, xoá dữ liệu theo yêu cầu, phân quyền truy vấn DB...).
