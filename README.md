@@ -51,9 +51,3 @@ Nếu chưa có API key, app vẫn chạy được — sẽ tự dùng gợi ý 
 ## Deploy nhanh (tuỳ chọn)
 
 Có thể deploy lên Railway hoặc Render (hỗ trợ Node/Express + Postgres managed trực tiếp, free tier đủ cho demo). Nhớ set biến môi trường `DEEPSEEK_API_KEY` và `DATABASE_URL` trên nền tảng deploy — không commit `.env` thật lên git.
-
-## Ghi chú cho buổi dạy
-
-- Buổi 2 (Ứng dụng web được tạo ra như thế nào): mở F12 trên trang demo để chỉ frontend (`index.html`) và request tới `/api/suggest` (phần "ẩn" phía sau).
-- Buổi 4 (AI & cá nhân hóa): chỉ ra `server.js` — dữ liệu người dùng nhập + lịch sử nhiều ngày (query Postgres) → prompt gửi AI (`buildUserPrompt`) → gợi ý trả về, minh hoạ vòng lặp cá nhân hóa theo thời gian.
-- Buổi 8 (Đạo đức): giờ dữ liệu ĐÃ được lưu thật (Postgres, username/password plaintext, session không mã hoá) — điểm để thảo luận cụ thể: "nếu đây là app thật, cần đổi gì để bảo vệ dữ liệu người dùng?" (hash password, mã hoá session, ai được xem lịch sử của ai, xoá dữ liệu theo yêu cầu, phân quyền truy vấn DB...).
