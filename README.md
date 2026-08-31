@@ -1,53 +1,84 @@
-# Hypnara — Demo
+# 🌙 Hypnara — AI Sleep & Digital Health Platform
 
-Web demo nhẹ: nhập thói quen & lịch trình hôm nay, nhận gợi ý cải thiện từ AI (DeepSeek).
+> **Nền tảng AI tối ưu hóa giấc ngủ và sức khỏe số.** Giúp bạn phân tích mối tương quan giữa thói quen sử dụng điện thoại, vận động thể chất và chất lượng giấc ngủ để xây dựng các vi thói quen bền vững (Tiny Habits).
 
-## Chạy thử (local)
+---
 
+## 🚀 Hướng Dẫn Khởi Động Nhanh
+
+### 1. Chuẩn bị môi trường
 ```bash
 cd hypnara-demo
 cp .env.example .env
-# mở .env, dán DEEPSEEK_API_KEY (lấy tại https://platform.deepseek.com/api_keys)
+```
+Mở file `.env` và điền `DEEPSEEK_API_KEY` (xem hướng dẫn chi tiết cách lấy key tại [doc.md](doc.md)).
+
+---
+
+### 2. Cách Chạy Ứng Dụng
+
+#### 🌟 Cách 1: Chỉ chạy Postgres qua Docker + Chạy app Node trực tiếp (Khuyên dùng)
+Tiện lợi khi phát triển, test tính năng và theo dõi logs trực tiếp:
+
+```bash
+# Khởi động PostgreSQL database
+docker-compose up -d db
+
+# Cài đặt thư viện dependencies
+npm install
+
+# Khởi động máy chủ ứng dụng
+npm start
 ```
 
-**Cách 1 — chỉ cần Docker, không cần cài Node (khuyên dùng để demo nhanh):**
+#### 🐳 Cách 2: Chạy toàn bộ ứng dụng và Database qua Docker Compose
+Dành cho việc triển khai tự động hoặc demo nhanh không cần cài đặt Node.js:
 
 ```bash
 docker-compose up --build
 ```
 
-Chạy cả Postgres lẫn app trong container, tự chờ Postgres sẵn sàng (healthcheck) rồi mới start app. Sửa code xong nhớ thêm `--build` để build lại image.
+---
 
-**Cách 2 — chỉ Postgres qua Docker, app chạy trực tiếp trên máy (tiện khi sửa code, có hot reload theo ý muốn):**
+### 3. Truy Cập Ứng Dụng
+Mở trình duyệt tại địa chỉ: 👉 **[http://localhost:3000](http://localhost:3000)**
 
-```bash
-docker-compose up -d db   # chi khoi dong Postgres, khong khoi dong app container
-nvm use                   # neu dung nvm, chon dung Node version tu .nvmrc
-npm install
-npm start
+*(Nếu chưa có API Key, hệ thống vẫn hoạt động đầy đủ với bộ quy tắc dự phòng rule-based offline).*
+
+---
+
+## 🛠️ Xử Lý Lỗi Thường Gặp (Troubleshooting)
+
+- **Lỗi `port is already allocated` (Trùng port 5432 hoặc 3000):**
+  - Nếu đã có container Postgres khác đang chạy trên máy, hãy dừng container đó (`docker stop <container_id>`) trước khi chạy `docker-compose up -d db`.
+  - Nếu port 3000 đang bận: Kiểm tra bằng `lsof -i :3000` và tắt process cũ bằng `kill -9 <PID>`.
+- **Lỗi `ECONNREFUSED 127.0.0.1:5432`:**
+  - Hãy đảm bảo database Postgres đã được khởi động bằng lệnh `docker-compose up -d db`.
+- **Lỗi `fetch is not defined` trên Node.js đời cũ (Node < 18):**
+  - Ứng dụng đã được tối ưu hóa bằng module chuẩn `https.request` của Node.js, tương thích hoàn toàn từ Node 14/16/18/20/22+.
+
+---
+
+## 📂 Cấu Trúc Dự Án
+
+```text
+hypnara-demo/
+├── server.js               # Backend Pure Node.js (HTTP + PostgreSQL + DeepSeek API)
+├── public/
+│   └── index.html          # Single Page Application Dashboard (Vanilla JS + CSS)
+├── doc.md                  # Hướng dẫn chi tiết sử dụng ứng dụng & Đăng ký API Key
+├── Dockerfile              # Docker container build cho Node.js app
+├── docker-compose.yml      # Service PostgreSQL (db) & Application (app)
+├── .env.example            # Mẫu cấu hình biến môi trường
+└── package.json            # Cấu hình dự án & thư viện (pg)
 ```
 
-Không chạy đồng thời cả 2 cách — sẽ đụng port `3000`.
+---
 
-Mở trình duyệt: http://localhost:3000
+## 📖 Tài Liệu Hướng Dẫn Chi Tiết
 
-Nếu chưa có API key, app vẫn chạy được — sẽ tự dùng gợi ý rule-based đơn giản thay vì gọi AI thật (đủ để demo giao diện và luồng, gắn key vào sau).
-
-## Cấu trúc
-
-- `server.js` — HTTP server bằng Node core (`http`) + `pg` (Postgres client): vừa phục vụ frontend tĩnh (`public/`) vừa xử lý API, không có server FE riêng. Có route đăng nhập/đăng ký, lưu thói quen, và `POST /api/suggest` gọi DeepSeek API (model `deepseek-v4-flash`, endpoint OpenAI-compatible).
-- `public/index.html` — 1 trang duy nhất: màn hình đăng nhập/đăng ký, form nhập thói quen + hiển thị gợi ý + lịch sử (HTML/CSS/JS thuần, không cần build).
-- `Dockerfile` — build image cho app (Node alpine, không bake `.env`/secret vào image).
-- `docker-compose.yml` — service `db` (Postgres, image `postgres:16-alpine`, data giữ qua volume `pgdata`) + service `app` (build từ `Dockerfile`, chờ `db` healthy mới start, nhận `DATABASE_URL` trỏ tới hostname `db` trong mạng Docker Compose).
-- `.env.example` — mẫu biến môi trường (API key, port, `DATABASE_URL` dùng khi chạy app trực tiếp trên host — trỏ `localhost`).
-
-## Đăng nhập, lưu lịch sử & Postgres (demo giảng dạy — KHÔNG có bảo mật thật)
-
-- `POST /api/register`, `POST /api/login`: username/password lưu **plaintext** trong bảng `users`, session là cookie **không ký, không mã hoá, không hết hạn**. Đây là lựa chọn có chủ đích cho mục đích giảng dạy, không phải thiếu sót — xem comment `ponytail:` trong `server.js` để biết cần nâng cấp gì (hash password, cookie ký) nếu dùng thật.
-- `POST /api/habits`: lưu thói quen hôm nay theo tài khoản vào bảng `habits`, ghi đè nếu nhập lại trong ngày (`ON CONFLICT (username, date) DO UPDATE`).
-- `POST /api/suggest`: yêu cầu đã đăng nhập, gộp thêm 10 bản ghi lịch sử gần nhất (theo ngày) của user (query từ Postgres) vào prompt gửi AI (`HISTORY_DAYS` trong `server.js`).
-- Server tự tạo bảng (`CREATE TABLE IF NOT EXISTS`) khi khởi động, không cần chạy migration riêng — xem `initSchema()` trong `server.js`.
-
-## Deploy nhanh (tuỳ chọn)
-
-Có thể deploy lên Railway hoặc Render (hỗ trợ Node/Express + Postgres managed trực tiếp, free tier đủ cho demo). Nhớ set biến môi trường `DEEPSEEK_API_KEY` và `DATABASE_URL` trên nền tảng deploy — không commit `.env` thật lên git.
+Vui lòng đọc file **[doc.md](doc.md)** để xem hướng dẫn chi tiết về:
+- Cách đăng ký tài khoản & lấy **DeepSeek API Key**.
+- Cách sử dụng tính năng **Trích xuất ảnh Screen Time OCR**.
+- Khám phá hệ thống **Gamification, Cấp độ, Huy hiệu & Lịch nhiệt độ 30 ngày (Heatmap)**.
+- Phân tích biểu đồ tương quan hành vi & tương tác với **AI Health Coach**.

@@ -1,3 +1,5 @@
 node_modules/
 .env
+.DS_Store
+.claude/
 Hypnara_Noi_dung_giang_day_chi_tiet.docx
