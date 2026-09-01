@@ -1,16 +1,27 @@
 {
   "name": "hypnara-demo",
-  "version": "1.0.0",
-  "description": "Demo web app Hypnara - dang nhap, nhap thoi quen & lich trinh, nhan goi y AI (DeepSeek), luu tru bang Postgres.",
-  "main": "server.js",
-  "type": "commonjs",
-  "engines": {
-    "node": ">=18"
-  },
+  "version": "2.0.0",
+  "private": true,
+  "description": "Hypnara - AI Sleep & Digital Wellbeing Coach (Next.js App Router)",
   "scripts": {
-    "start": "node server.js"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
-    "pg": "^8.22.0"
+    "lucide-react": "^0.453.0",
+    "next": "^14.2.15",
+    "pg": "^8.13.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tesseract.js": "^5.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.8.1",
+    "@types/pg": "^8.11.10",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
   }
 }
