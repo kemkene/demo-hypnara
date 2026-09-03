@@ -68,6 +68,8 @@ export async function initSchema(retriesLeft = 10) {
         reminder_time TEXT,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+
+      ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS reminders JSONB DEFAULT '[]'::jsonb;
     `);
   } catch (err: any) {
     if (retriesLeft <= 0) {

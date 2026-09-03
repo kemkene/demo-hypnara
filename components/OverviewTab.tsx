@@ -1,8 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Moon, Monitor, Gamepad2, Activity, Smartphone, Smile, Sparkles, CheckCircle2, Circle, Target, Bell, Plus, X, Check } from 'lucide-react';
+import { Moon, Monitor, Gamepad2, Activity, Smartphone, Smile, Sparkles, CheckCircle2, Circle, Target, Bell, Plus, X, Check, Clock, Trash2, Volume2 } from 'lucide-react';
 import TrendChart from '@/components/dashboard/TrendChart';
+
+interface ReminderItem {
+  id: string;
+  time: string;
+  label: string;
+  enabled: boolean;
+}
 
 const PRESET_GOALS = [
   'Tối ưu giấc ngủ 7.0 - 9.0h / đêm',
@@ -13,17 +20,28 @@ const PRESET_GOALS = [
   'Không dùng thiết bị số trong phòng ngủ',
 ];
 
+const DEFAULT_REMINDERS: ReminderItem[] = [
+  { id: 'rem-1', time: '21:30', label: 'Tắt máy & Rời màn hình trước khi ngủ 30 phút', enabled: true },
+  { id: 'rem-2', time: '22:00', label: 'Ghi chép nhật ký thói quen sinh hoạt hôm nay', enabled: true },
+  { id: 'rem-3', time: '22:30', label: 'Đi ngủ đúng giờ & Bật chế độ không làm phiền', enabled: true },
+];
+
 export default function OverviewTab({ user }: { user: string | null }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Profile Goal & Reminder state (Supports multiple goals)
+  // Profile Goal state (Supports multiple goals)
   const [selectedGoals, setSelectedGoals] = useState<string[]>([
     'Tối ưu giấc ngủ 7.0 - 9.0h / đêm',
     'Tắt máy trước khi ngủ ít nhất 30 phút',
   ]);
   const [customGoalInput, setCustomGoalInput] = useState('');
-  const [reminderTime, setReminderTime] = useState('22:00');
+
+  // Reminders state (Supports multiple custom reminders)
+  const [reminders, setReminders] = useState<ReminderItem[]>(DEFAULT_REMINDERS);
+  const [newReminderTime, setNewReminderTime] = useState('21:00');
+  const [newReminderLabel, setNewReminderLabel] = useState('');
+
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSavedMsg, setProfileSavedMsg] = useState('');
 
@@ -58,7 +76,14 @@ export default function OverviewTab({ user }: { user: string | null }) {
               setSelectedGoals([pfJson.profile.primary_goal]);
             }
           }
-          if (pfJson.profile.reminder_time) setReminderTime(pfJson.profile.reminder_time);
+          if (pfJson.profile.reminders && Array.isArray(pfJson.profile.reminders) && pfJson.profile.reminders.length > 0) {
+            setReminders(pfJson.profile.reminders);
+          } else if (pfJson.profile.reminder_time) {
+            setReminders([
+              { id: 'rem-1', time: pfJson.profile.reminder_time, label: 'Ghi chép nhật ký thói quen sinh hoạt hôm nay', enabled: true },
+              { id: 'rem-2', time: '21:30', label: 'Tắt máy & Rời màn hình trước khi ngủ 30 phút', enabled: true },
+            ]);
+          }
         }
       }
     } catch (err) {
@@ -96,22 +121,74 @@ export default function OverviewTab({ user }: { user: string | null }) {
     setSelectedGoals(selectedGoals.filter((g) => g !== goal));
   };
 
+  // Reminder handlers
+  const handleToggleReminder = (id: string) => {
+    setReminders((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r))
+    );
+  };
+
+  const handleUpdateReminderTime = (id: string, time: string) => {
+    setReminders((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, time } : r))
+    );
+  };
+
+  const handleUpdateReminderLabel = (id: string, label: string) => {
+    setReminders((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, label } : r))
+    );
+  };
+
+  const handleRemoveReminder = (id: string) => {
+    if (reminders.length <= 1) return;
+    setReminders((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const handleAddReminder = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const label = newReminderLabel.trim() || 'Nhắc nhở tối ưu giấc ngủ';
+    const newRem: ReminderItem = {
+      id: `rem-${Date.now()}`,
+      time: newReminderTime || '22:00',
+      label,
+      enabled: true,
+    };
+    setReminders((prev) => [...prev, newRem]);
+    setNewReminderLabel('');
+  };
+
+  const handleTestNotification = (customText?: string) => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          new Notification('🌙 Hypnara - Chuông Nhắc Nhở Thử Nghiệm', {
+            body: customText || '✅ Thông báo hoạt động tốt! Bạn sẽ nhận được chuông nhắc đúng các khung giờ đã cài đặt.',
+            icon: '/favicon.ico',
+          });
+        }
+      });
+    }
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setSavingProfile(true);
     setProfileSavedMsg('');
     try {
+      const primaryReminderTime = reminders.find((r) => r.enabled)?.time || '22:00';
       const res = await fetch('/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           primaryGoal: selectedGoals.join(' • '),
-          reminderTime,
+          reminderTime: primaryReminderTime,
+          reminders,
         }),
       });
       if (res.ok) {
-        setProfileSavedMsg('✅ Đã lưu mục tiêu & giờ nhắc nhở!');
+        setProfileSavedMsg('✅ Đã lưu toàn bộ mục tiêu & danh sách nhắc nhở!');
         setTimeout(() => setProfileSavedMsg(''), 3000);
       }
     } catch (err) {
@@ -374,43 +451,218 @@ export default function OverviewTab({ user }: { user: string | null }) {
           </div>
         </div>
 
-        <form onSubmit={handleSaveProfile} style={{ display: 'flex', gap: 14, alignItems: 'flex-end', flexWrap: 'wrap', paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-          <div className="form-group" style={{ marginBottom: 0, minWidth: 200 }}>
-            <label style={{ fontSize: 12.5, marginBottom: 5 }}>⏰ Giờ nhắc nhở hàng ngày</label>
-            <input
-              type="time"
-              className="form-control"
-              value={reminderTime}
-              onChange={(e) => setReminderTime(e.target.value)}
-              style={{ fontSize: 13 }}
-            />
+        {/* Multi-reminders management section */}
+        <div style={{ paddingTop: 14, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+            <label style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Clock size={16} color="#c084fc" /> Thiết lập các mốc nhắc nhở riêng biệt ({reminders.filter((r) => r.enabled).length} đang bật):
+            </label>
+            <span style={{ fontSize: 12, color: '#a78bfa' }}>
+              Mỗi mục tiêu có thể có một khung giờ và nội dung nhắc nhở riêng
+            </span>
           </div>
 
-          <button type="submit" className="btn-primary" style={{ padding: '9px 18px', fontSize: 13 }} disabled={savingProfile}>
-            <Bell size={15} /> Lưu mục tiêu & giờ nhắc nhở
-          </button>
-        </form>
+          {/* Reminders List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+            {reminders.map((rem) => (
+              <div
+                key={rem.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '8px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  background: rem.enabled ? 'rgba(168, 85, 247, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                  border: rem.enabled ? '1px solid rgba(168, 85, 247, 0.25)' : '1px solid rgba(255, 255, 255, 0.06)',
+                  opacity: rem.enabled ? 1 : 0.6,
+                  transition: 'all 0.2s ease',
+                  flexWrap: 'wrap',
+                }}
+              >
+                {/* Enabled checkbox */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: rem.enabled ? '#c084fc' : '#64748b' }}>
+                  <input
+                    type="checkbox"
+                    checked={rem.enabled}
+                    onChange={() => handleToggleReminder(rem.id)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  {rem.enabled ? 'Bật' : 'Tắt'}
+                </label>
 
-        <div style={{ marginTop: 14, padding: '10px 14px', background: 'rgba(99, 102, 241, 0.08)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(99, 102, 241, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12.5, color: '#c7d2fe', flexWrap: 'wrap', gap: 10 }}>
-          <span>🔔 Hệ thống sẽ tự động kích hoạt thông báo lúc <strong>{reminderTime || '22:00'}</strong> mỗi tối để nhắc bạn rời màn hình & ghi nhật ký thói quen.</span>
-          {typeof window !== 'undefined' && 'Notification' in window && (
-            <button
-              type="button"
-              className="btn-action"
-              onClick={() => {
-                if (typeof Notification !== 'undefined') {
-                  Notification.requestPermission().then((permission) => {
-                    if (permission === 'granted') {
-                      new Notification('Hypnara', { body: '✅ Đã kích hoạt thông báo nhắc nhở thành công!' });
-                    }
-                  });
+                {/* Time picker */}
+                <input
+                  type="time"
+                  value={rem.time}
+                  onChange={(e) => handleUpdateReminderTime(rem.id, e.target.value)}
+                  className="form-control"
+                  style={{
+                    width: 105,
+                    padding: '4px 8px',
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    color: rem.enabled ? '#ffffff' : '#94a3b8',
+                  }}
+                  disabled={!rem.enabled}
+                />
+
+                {/* Reminder text label */}
+                <input
+                  type="text"
+                  value={rem.label}
+                  onChange={(e) => handleUpdateReminderLabel(rem.id, e.target.value)}
+                  className="form-control"
+                  style={{
+                    flex: 1,
+                    minWidth: 200,
+                    padding: '5px 10px',
+                    fontSize: 12.5,
+                    color: rem.enabled ? '#e2e8f0' : '#64748b',
+                  }}
+                  placeholder="Nội dung lời nhắc..."
+                  disabled={!rem.enabled}
+                />
+
+                {/* Test button for this reminder */}
+                <button
+                  type="button"
+                  onClick={() => handleTestNotification(`⏰ [${rem.time}] ${rem.label}`)}
+                  title="Thử chuông cho mốc này"
+                  style={{
+                    background: 'rgba(168, 85, 247, 0.15)',
+                    border: '1px solid rgba(168, 85, 247, 0.3)',
+                    color: '#e9d5ff',
+                    padding: '5px 8px',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 11.5,
+                  }}
+                >
+                  <Volume2 size={13} /> Thử
+                </button>
+
+                {/* Delete button */}
+                {reminders.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveReminder(rem.id)}
+                    title="Xóa mốc nhắc nhở"
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      color: '#f87171',
+                      padding: '5px 8px',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Form to add a new custom reminder */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              alignItems: 'center',
+              padding: '10px 14px',
+              background: 'rgba(255, 255, 255, 0.02)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px dashed rgba(255, 255, 255, 0.12)',
+              marginBottom: 16,
+              flexWrap: 'wrap',
+            }}
+          >
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: '#94a3b8' }}>+ Thêm mốc mới:</span>
+            <input
+              type="time"
+              value={newReminderTime}
+              onChange={(e) => setNewReminderTime(e.target.value)}
+              className="form-control"
+              style={{ width: 105, padding: '5px 8px', fontSize: 12.5 }}
+            />
+            <input
+              type="text"
+              value={newReminderLabel}
+              onChange={(e) => setNewReminderLabel(e.target.value)}
+              placeholder="Nhập nội dung nhắc nhở riêng (ví dụ: Uống nước & đi ngủ lúc 23h)..."
+              className="form-control"
+              style={{ flex: 1, minWidth: 200, padding: '5px 10px', fontSize: 12.5 }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddReminder();
                 }
               }}
-              style={{ fontSize: 11.5, padding: '5px 12px', background: 'rgba(99, 102, 241, 0.2)', color: '#fff', border: '1px solid rgba(99, 102, 241, 0.4)' }}
+            />
+            <button
+              type="button"
+              onClick={() => handleAddReminder()}
+              className="btn-action"
+              style={{ padding: '6px 14px', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 5 }}
             >
-              {typeof Notification !== 'undefined' && Notification.permission === 'granted' ? '✅ Thông báo Web: Đã bật' : '🔔 Bật thông báo Web'}
+              <Plus size={14} /> Thêm nhắc nhở
             </button>
-          )}
+          </div>
+
+          {/* Action buttons bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+            <button
+              type="button"
+              onClick={handleSaveProfile}
+              className="btn-primary"
+              style={{ padding: '10px 20px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              disabled={savingProfile}
+            >
+              <Bell size={16} /> Lưu toàn bộ mục tiêu & danh sách nhắc nhở
+            </button>
+
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button
+                type="button"
+                className="btn-action"
+                onClick={() => handleTestNotification()}
+                style={{ fontSize: 12, padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+              >
+                <Volume2 size={14} /> Thử chuông tất cả
+              </button>
+
+              {typeof window !== 'undefined' && 'Notification' in window && (
+                <button
+                  type="button"
+                  className="btn-action"
+                  onClick={() => {
+                    if (typeof Notification !== 'undefined') {
+                      Notification.requestPermission().then((permission) => {
+                        if (permission === 'granted') {
+                          handleTestNotification('✅ Đã bật thông báo Web thành công! Bạn sẽ nhận thông báo khi đến giờ.');
+                        }
+                      });
+                    }
+                  }}
+                  style={{
+                    fontSize: 12,
+                    padding: '7px 14px',
+                    background: typeof Notification !== 'undefined' && Notification.permission === 'granted' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.2)',
+                    borderColor: typeof Notification !== 'undefined' && Notification.permission === 'granted' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(99, 102, 241, 0.4)',
+                    color: typeof Notification !== 'undefined' && Notification.permission === 'granted' ? '#34d399' : '#fff',
+                  }}
+                >
+                  {typeof Notification !== 'undefined' && Notification.permission === 'granted' ? '✅ Thông báo Web: Đã bật' : '🔔 Bật thông báo Web'}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

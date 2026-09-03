@@ -3,16 +3,24 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, Moon, X, ArrowRight } from 'lucide-react';
 
+interface ReminderItem {
+  id: string;
+  time: string;
+  label: string;
+  enabled: boolean;
+}
+
 interface ReminderBannerProps {
   user: string | null;
   onNavigateToHabits: () => void;
 }
 
 export default function ReminderBanner({ user, onNavigateToHabits }: ReminderBannerProps) {
-  const [reminderTime, setReminderTime] = useState<string | null>(null);
+  const [reminders, setReminders] = useState<ReminderItem[]>([]);
+  const [activeReminder, setActiveReminder] = useState<ReminderItem | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const [alreadyLoggedToday, setAlreadyLoggedToday] = useState(false);
-  const [dismissedDate, setDismissedDate] = useState<string | null>(null);
+  const [dismissedReminders, setDismissedReminders] = useState<Record<string, string>>({});
 
   const getVnToday = () => {
     return typeof window !== 'undefined'
@@ -31,7 +39,7 @@ export default function ReminderBanner({ user, onNavigateToHabits }: ReminderBan
       : '22:00';
   };
 
-  // Fetch user profile to get reminder_time and check today's habit log
+  // Fetch user profile to get reminders list and check today's habit log
   useEffect(() => {
     if (!user) {
       setShowBanner(false);
@@ -47,10 +55,26 @@ export default function ReminderBanner({ user, onNavigateToHabits }: ReminderBan
 
         if (profRes.ok) {
           const p = await profRes.json();
-          if (p.profile?.reminder_time) {
-            setReminderTime(p.profile.reminder_time);
+          if (p.profile?.reminders && Array.isArray(p.profile.reminders) && p.profile.reminders.length > 0) {
+            setReminders(p.profile.reminders);
+          } else if (p.profile?.reminder_time) {
+            setReminders([
+              {
+                id: 'default-1',
+                time: p.profile.reminder_time,
+                label: 'Tắt màn hình & Ghi chép nhật ký thói quen hôm nay',
+                enabled: true,
+              },
+            ]);
           } else {
-            setReminderTime('22:00');
+            setReminders([
+              {
+                id: 'default-1',
+                time: '22:00',
+                label: 'Tắt màn hình & Ghi chép nhật ký thói quen hôm nay',
+                enabled: true,
+              },
+            ]);
           }
         }
 
@@ -68,31 +92,36 @@ export default function ReminderBanner({ user, onNavigateToHabits }: ReminderBan
     checkData();
   }, [user]);
 
-  // Periodic interval check
+  // Periodic interval check against all enabled reminders
   useEffect(() => {
-    if (!user || !reminderTime || alreadyLoggedToday) {
+    if (!user || reminders.length === 0) {
       setShowBanner(false);
       return;
     }
 
     const checkReminder = () => {
       const today = getVnToday();
-      if (dismissedDate === today) {
-        setShowBanner(false);
-        return;
-      }
-
       const currentTime = getVnTime();
-      // Compare current time with reminderTime
-      if (currentTime >= reminderTime) {
+
+      // Find any enabled reminder that is due and not dismissed today
+      const due = reminders.find((r) => {
+        if (!r.enabled) return false;
+        if (dismissedReminders[r.id] === today) return false;
+        // If it's the log habit reminder and user already logged, skip
+        if (r.label.toLowerCase().includes('nhật ký') && alreadyLoggedToday) return false;
+        return currentTime >= r.time;
+      });
+
+      if (due) {
+        setActiveReminder(due);
         setShowBanner(true);
 
         // Web Notification trigger
         if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          const notifiedKey = `hypnara_notified_${today}_${reminderTime}`;
+          const notifiedKey = `hypnara_notified_${today}_${due.id}_${due.time}`;
           if (!sessionStorage.getItem(notifiedKey)) {
-            new Notification('🌙 Hypnara - Giờ Tối Ưu Giấc Ngủ', {
-              body: `Đã đến ${reminderTime}! Hãy tắt màn hình, thư giãn mắt và hoàn thành nhật ký thói quen hôm nay.`,
+            new Notification('🌙 Hypnara - Nhắc Nhở Kỷ Luật', {
+              body: `Đã đến ${due.time}! ${due.label}`,
               icon: '/favicon.ico',
             });
             sessionStorage.setItem(notifiedKey, 'true');
@@ -104,16 +133,19 @@ export default function ReminderBanner({ user, onNavigateToHabits }: ReminderBan
     };
 
     checkReminder();
-    const interval = setInterval(checkReminder, 15000); // Check every 15s
+    const interval = setInterval(checkReminder, 10000); // Check every 10s
     return () => clearInterval(interval);
-  }, [user, reminderTime, alreadyLoggedToday, dismissedDate]);
+  }, [user, reminders, alreadyLoggedToday, dismissedReminders]);
 
   const handleDismiss = () => {
-    setDismissedDate(getVnToday());
+    if (activeReminder) {
+      const today = getVnToday();
+      setDismissedReminders((prev) => ({ ...prev, [activeReminder.id]: today }));
+    }
     setShowBanner(false);
   };
 
-  if (!showBanner || !reminderTime) return null;
+  if (!showBanner || !activeReminder) return null;
 
   return (
     <div
@@ -136,24 +168,26 @@ export default function ReminderBanner({ user, onNavigateToHabits }: ReminderBan
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div
           style={{
-            width: 36,
-            height: 36,
+            width: 38,
+            height: 38,
             borderRadius: '50%',
-            background: 'rgba(168, 85, 247, 0.2)',
+            background: 'rgba(168, 85, 247, 0.25)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
+            border: '1px solid rgba(168, 85, 247, 0.4)',
           }}
         >
           <Moon size={20} color="#c084fc" />
         </div>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 14, color: '#ffffff' }}>
-            Đã đến giờ nhắc nhở buổi tối ({reminderTime})!
+          <div style={{ fontWeight: 800, fontSize: 14, color: '#ffffff', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>⏰ Nhắc nhở lúc {activeReminder.time}</span>
+            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: 'rgba(192, 132, 252, 0.2)', color: '#e9d5ff' }}>Đang kích hoạt</span>
           </div>
-          <div style={{ fontSize: 12.5, color: '#e9d5ff', opacity: 0.9 }}>
-            Đã đến lúc tạm dừng các thiết bị số, tắt đèn màn hình và ghi lại nhật ký thói quen hôm nay để bảo vệ chuỗi kỷ luật.
+          <div style={{ fontSize: 13, color: '#e9d5ff', marginTop: 2 }}>
+            {activeReminder.label}
           </div>
         </div>
       </div>

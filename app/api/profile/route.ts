@@ -20,16 +20,20 @@ export async function POST(request: Request) {
   if (!username) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
   try {
-    const { primaryGoal, reminderTime } = await request.json();
+    const { primaryGoal, reminderTime, reminders } = await request.json();
     const pool = await getDbPool();
+    const remindersJson = reminders && Array.isArray(reminders) ? JSON.stringify(reminders) : null;
+    const primaryReminderTime = reminderTime || (reminders && reminders[0]?.time) || '22:00';
+
     await pool.query(
-      `INSERT INTO user_profiles (username, primary_goal, reminder_time, updated_at)
-       VALUES ($1, $2, $3, now())
+      `INSERT INTO user_profiles (username, primary_goal, reminder_time, reminders, updated_at)
+       VALUES ($1, $2, $3, COALESCE($4::jsonb, '[]'::jsonb), now())
        ON CONFLICT (username) DO UPDATE SET
          primary_goal = EXCLUDED.primary_goal,
          reminder_time = EXCLUDED.reminder_time,
+         reminders = COALESCE($4::jsonb, user_profiles.reminders, '[]'::jsonb),
          updated_at = now()`,
-      [username, primaryGoal || '', reminderTime || '22:00']
+      [username, primaryGoal || '', primaryReminderTime, remindersJson]
     );
 
     return NextResponse.json({ message: 'Lưu profile thành công' });
