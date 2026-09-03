@@ -27,7 +27,13 @@ const DEFAULT_REMINDERS: ReminderItem[] = [
   { id: 'rem-3', time: '22:30', label: 'Đi ngủ đúng giờ & Bật chế độ không làm phiền', enabled: true },
 ];
 
-export default function OverviewTab({ user }: { user: string | null }) {
+interface OverviewTabProps {
+  user: string | null;
+  dataVersion?: number;
+  onProfileSaved?: () => void;
+}
+
+export default function OverviewTab({ user, dataVersion = 0, onProfileSaved }: OverviewTabProps) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -52,6 +58,7 @@ export default function OverviewTab({ user }: { user: string | null }) {
 
   const fetchOverview = async () => {
     if (!user) {
+      setData(null);
       setLoading(false);
       return;
     }
@@ -100,7 +107,7 @@ export default function OverviewTab({ user }: { user: string | null }) {
 
   useEffect(() => {
     fetchOverview();
-  }, [user]);
+  }, [user, dataVersion]);
 
   const handleToggleGoal = (goal: string) => {
     if (selectedGoals.includes(goal)) {
@@ -237,6 +244,7 @@ export default function OverviewTab({ user }: { user: string | null }) {
       if (res.ok) {
         setProfileSavedMsg('✅ Đã lưu toàn bộ mục tiêu & danh sách nhắc nhở!');
         setTimeout(() => setProfileSavedMsg(''), 3000);
+        onProfileSaved?.();
       }
     } catch (err) {
       console.error(err);

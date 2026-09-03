@@ -13,10 +13,11 @@ interface ReminderItem {
 
 interface ReminderBannerProps {
   user: string | null;
+  dataVersion?: number;
   onNavigateToHabits: () => void;
 }
 
-export default function ReminderBanner({ user, onNavigateToHabits }: ReminderBannerProps) {
+export default function ReminderBanner({ user, dataVersion = 0, onNavigateToHabits }: ReminderBannerProps) {
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
   const [activeReminder, setActiveReminder] = useState<ReminderItem | null>(null);
   const [showBanner, setShowBanner] = useState(false);
@@ -91,7 +92,7 @@ export default function ReminderBanner({ user, onNavigateToHabits }: ReminderBan
     };
 
     checkData();
-  }, [user]);
+  }, [user, dataVersion]);
 
   // Periodic interval check against all enabled reminders
   useEffect(() => {

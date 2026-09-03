@@ -3,7 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import { Award, Plus, CheckCircle2, Trash2, Mail, Sparkles, Quote, AlertTriangle, ExternalLink } from 'lucide-react';
 
-export default function MotivationTab({ user }: { user: string | null }) {
+interface MotivationTabProps {
+  user: string | null;
+  dataVersion?: number;
+  onDataChange?: () => void;
+}
+
+export default function MotivationTab({ user, dataVersion = 0, onDataChange }: MotivationTabProps) {
   const todayStr = typeof window !== 'undefined'
     ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
     : new Date().toISOString().slice(0, 10);
@@ -22,7 +28,11 @@ export default function MotivationTab({ user }: { user: string | null }) {
   const [error, setError] = useState('');
 
   const fetchMotivation = async () => {
-    if (!user) return;
+    if (!user) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch('/api/motivation');
@@ -39,7 +49,7 @@ export default function MotivationTab({ user }: { user: string | null }) {
 
   useEffect(() => {
     fetchMotivation();
-  }, [user]);
+  }, [user, dataVersion]);
 
   const handleAddCommitment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +66,7 @@ export default function MotivationTab({ user }: { user: string | null }) {
       if (res.ok) {
         setTitle('');
         fetchMotivation();
+        onDataChange?.();
       } else {
         setCommitmentError(json.error || 'Lỗi tạo cam kết');
       }
@@ -77,6 +88,7 @@ export default function MotivationTab({ user }: { user: string | null }) {
       const json = await res.json();
       if (res.ok) {
         fetchMotivation();
+        onDataChange?.();
       } else {
         setCommitmentError(json.error || 'Lỗi điểm danh');
       }
@@ -90,6 +102,7 @@ export default function MotivationTab({ user }: { user: string | null }) {
       const res = await fetch(`/api/commitments/${id}`, { method: 'DELETE' });
       if (res.ok) {
         fetchMotivation();
+        onDataChange?.();
       }
     } catch (err) {
       console.error(err);

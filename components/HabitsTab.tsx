@@ -3,7 +3,21 @@
 import React, { useEffect, useState } from 'react';
 import { Calendar, Sparkles, ChevronLeft, ChevronRight, Save, Copy, PlusCircle, AlertTriangle, ExternalLink } from 'lucide-react';
 
-export default function HabitsTab({ user, prefillData }: { user: string | null; prefillData?: any }) {
+interface HabitsTabProps {
+  user: string | null;
+  prefillData?: any;
+  dataVersion?: number;
+  onHabitSaved?: () => void;
+  onCommitmentAdded?: () => void;
+}
+
+export default function HabitsTab({
+  user,
+  prefillData,
+  dataVersion = 0,
+  onHabitSaved,
+  onCommitmentAdded,
+}: HabitsTabProps) {
   const todayStr = typeof window !== 'undefined'
     ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
     : new Date().toISOString().slice(0, 10);
@@ -44,7 +58,11 @@ export default function HabitsTab({ user, prefillData }: { user: string | null; 
   }, [prefillData]);
 
   const loadHistory = async (p = 1) => {
-    if (!user) return;
+    if (!user) {
+      setHabitsList([]);
+      setTotalHabits(0);
+      return;
+    }
     try {
       const res = await fetch(`/api/habits?page=${p}&pageSize=${pageSize}`);
       if (res.ok) {
@@ -60,7 +78,7 @@ export default function HabitsTab({ user, prefillData }: { user: string | null; 
 
   useEffect(() => {
     loadHistory(page);
-  }, [user, page]);
+  }, [user, page, dataVersion]);
 
   const handleCopyYesterday = async () => {
     if (!user) return;
@@ -123,6 +141,7 @@ export default function HabitsTab({ user, prefillData }: { user: string | null; 
 
       setMessage('✅ Đã lưu dữ liệu thói quen ngày ' + date);
       loadHistory(page);
+      onHabitSaved?.();
     } catch (err: any) {
       setErrorMessage(err.message);
     } finally {
@@ -189,6 +208,7 @@ export default function HabitsTab({ user, prefillData }: { user: string | null; 
       if (res.ok) {
         setCreatedCommitmentMsg('🎯 Đã biến gợi ý AI thành mục tiêu cam kết hôm nay! Kiểm tra ở mục Động lực.');
         setTimeout(() => setCreatedCommitmentMsg(''), 4000);
+        onCommitmentAdded?.();
       }
     } catch (err) {
       console.error(err);
