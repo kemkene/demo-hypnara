@@ -42,4 +42,4 @@
 1. **Chuột di chuyển dứt khoát, mượt mà:** Tránh quơ chuột liên tục hoặc click lung tung. Hãy dừng chuột 1–2 giây tại điểm muốn người xem chú ý trước khi click.
 2. **Khoe tính năng Chống Lỗi (Resilience):** Có thể dành 10 giây khoe việc: *"Kể cả khi bạn tắt mạng WiFi hoặc chưa điền API Key, Hypnara vẫn chạy mượt mà 100% nhờ bộ engine Rule-Based Offline mà không bao giờ gặp lỗi 500"*. Đây là điểm cộng cực lớn trước ban giám khảo kỹ thuật!
 3. **Mở sẵn âm thanh thông báo:** Khi click nút "Bật thông báo Web", tiếng chuông `ting` của macOS/Windows vang lên sẽ làm video sống động hơn rất nhiều.
-4. **Hiển thị Code / Terminal nếu là demo kỹ thuật:** Ở cuối video, bạn có thể chuyển nhanh sang terminal chạy lệnh `npm test` để khoe **27/27 Unit Tests PASS 100%** nhằm khẳng định độ tin cậy và chất lượng mã nguồn của dự án!
+4. **Hiển thị Code / Terminal nếu là demo kỹ thuật:** Ở cuối video, bạn có thể chuyển nhanh sang terminal chạy lệnh `npm test` để khoe **28/28 Unit Tests PASS 100%** nhằm khẳng định độ tin cậy và chất lượng mã nguồn của dự án!

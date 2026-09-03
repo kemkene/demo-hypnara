@@ -82,8 +82,9 @@ Hệ thống sử dụng PostgreSQL với cơ chế tự động khởi tạo v�
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
 | :--- | :--- | :--- | :--- |
 | `username` | `TEXT` | `PRIMARY KEY REFERENCES users` | Người dùng |
-| `primary_goal` | `TEXT` | Khả dụng `NULL` | Mục tiêu cải thiện lớn |
-| `reminder_time` | `TEXT` | `DEFAULT '22:00'` | Khung giờ nhắc nhở (HH:mm) |
+| `primary_goal` | `TEXT` | Khả dụng `NULL` | Danh sách mục tiêu cải thiện (phân tách bằng ` • `) |
+| `reminder_time` | `TEXT` | `DEFAULT '22:00'` | Khung giờ nhắc nhở mặc định (HH:mm) |
+| `reminders` | `JSONB` | `DEFAULT '[]'::jsonb` | Danh sách nhắc nhở tùy chỉnh: `[{ id, time, label, enabled }]` |
 | `updated_at` | `TIMESTAMPTZ` | `DEFAULT now()` | Thời điểm cập nhật |
 
 ---
@@ -129,7 +130,20 @@ Khi client gọi các tính năng AI, hệ thống thực thi qua pipeline sau:
   - Sử dụng Regex biên từ `\b(hi|hello|hey)\b` và phân loại chủ đề (mất ngủ, khó ngủ, screen time, điện thoại, vận động, điểm số).
   - Trả về tư vấn súc tích dưới 200 từ dựa trên khuyến nghị của Sleep Foundation & Matthew Walker.
 - **`generateRuleBasedMotivationalLetter(username, profile, habits)`**:
-  - Sinh thư cá nhân hóa độ dài 250 - 350 từ dẫn chứng mục tiêu cá nhân, số ngày tham gia và thời lượng ngủ trung bình của học viên.
+  - Sinh thư cá nhân hóa độ dài 250 - 350 từ.
+  - **Kiểm soát ảo giác cho tài khoản mới (0 ngày)**: Nếu học viên mới tinh chưa ghi nhận thói quen nào, hệ thống tạo thư chào mừng nồng nhiệt truyền cảm hứng bước chân đầu tiên; tuyệt đối không nói nhầm là họ "đã theo app 10 ngày".
+
+### 4.3. Hệ thống Giám sát & Hướng dẫn Cấu hình API Key (`ApiKeyNotice`)
+Khi `DEEPSEEK_API_KEY` bị thiếu trong `.env` hoặc API Key gặp sự cố xác thực (401) / hết quota (402):
+- API trả về payload kèm object `notice`:
+  ```typescript
+  interface ApiKeyNotice {
+    status: 'missing' | 'error';
+    message: string;
+    guide: { step1: string; step2: string; step3: string; step4: string; url: string };
+  }
+  ```
+- Giao diện người dùng tự động hiển thị banner cảnh báo màu vàng nổi bật kèm hướng dẫn 4 bước tạo API Key miễn phí tại [platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys), đảm bảo người dùng nắm rõ nguyên nhân mà không bị gián đoạn tính năng.
 
 ---
 
@@ -163,6 +177,25 @@ Chi tiết cách tính điểm phạt:
   - Nếu `commitment.target_date > todayStr()`: Bị chặn với lỗi `400` ("Chưa đến ngày thực hiện cam kết").
   - Nếu `commitment.completed === true` và gửi yêu cầu hủy: Bị chặn với lỗi `400` để đảm bảo tính bất biến của dữ liệu kỷ luật.
 
+### 5.3. Biểu Đồ Cột Ghép SVG Hiện Đại ([components/dashboard/TrendChart.tsx](file:///Users/truongcon/Desktop/hypnara-demo/components/dashboard/TrendChart.tsx))
+- **Kiến trúc thuần SVG**: Không phụ thuộc vào thư viện ngoài cồng kềnh (Chart.js hay Recharts), giảm bundle size.
+- **Cột ghép 3 chỉ số theo ngày**:
+  - Giờ ngủ (Indigo: `#4f46e5` ➔ `#a5b4fc`).
+  - Screen Time (Cyan: `#0891b2` ➔ `#67e8f9`).
+  - Vận động thể chất (Emerald: `#059669` ➔ `#6ee7b7`).
+- **Dải tiêu chuẩn vàng WHO (7.0 - 9.0h)**: Vẽ vùng dải nền hổ phách kèm đường nét đứt trực quan giúp học viên so sánh ngay thói quen của mình với chuẩn y tế thế giới.
+- **Sắp xếp thời gian chuẩn xác (Chronological ASC)**: Ép sắp xếp mốc ngày tăng dần từ quá khứ đến hiện tại (`a.date.localeCompare(b.date)`).
+- **Bộ lọc động**: Xem cột ghép hoặc lọc riêng lẻ từng chỉ số theo các mốc 7 ngày, 14 ngày, 30 ngày.
+
+### 5.4. Động Cơ Chuông Web Audio & Thông Báo Push ([lib/notification.ts](file:///Users/truongcon/Desktop/hypnara-demo/lib/notification.ts))
+- **Tổng hợp âm thanh Web Audio API**: Tự động sinh chuông đôi thư giãn êm dịu hai nốt hòa âm (`E5 659Hz` ➔ `B5 987Hz`) bằng sóng sin và exponential decay, **100% không cần tải file âm thanh tĩnh bên ngoài**, triệt tiêu lỗi CORS hoặc 404 file âm thanh.
+- **Thông báo Native & Toast nổi**: Kiểm tra trạng thái cấp quyền `Notification.permission` với hướng dẫn mở khóa nếu bị chặn, kết hợp toast thông báo trực quan trên màn hình.
+
+### 5.5. Cơ Chế Đồng Bộ Trạng Thái Thời Gian Thực & Cô Lập Lỗi Extension
+- **`dataVersion` Event Engine**: Khi người dùng lưu thói quen, điểm danh cam kết, đổi mục tiêu, hệ thống kích hoạt làm mới ngay lập tức các component liên quan mà không cần người dùng bấm F5.
+- **Tự động làm mới khi đăng xuất/đăng nhập**: Đảm bảo trạng thái session sạch sẽ, bảo mật và phản hồi UI tức thì.
+- **Bộ lọc cô lập lỗi Extension trong `<head>` ([app/layout.tsx](file:///Users/truongcon/Desktop/hypnara-demo/app/layout.tsx))**: Lắng nghe và chặn các lỗi Runtime từ tiện ích trình duyệt bên thứ ba (như Urban VPN, MetaMask `chrome-extension://...`) tránh làm kích hoạt Next.js dev error overlay nhầm lẫn.
+
 ---
 
 ## 6. Danh Mục REST API Handlers
@@ -186,7 +219,7 @@ Chi tiết cách tính điểm phạt:
 | `/api/commitments/[id]/checkin`| `POST`| Điểm danh cam kết | `{ completed: boolean }` | 200, 400, 404 |
 | `/api/commitments/[id]`| `DELETE`| Xóa cam kết hành động | Không | 200, 401 |
 | `/api/profile` | `GET` | Lấy mục tiêu & giờ nhắc nhở | Không | 200, 401 |
-| `/api/profile` | `POST` | Lưu mục tiêu & giờ nhắc nhở | `{ primaryGoal, reminderTime }` | 200, 401 |
+| `/api/profile` | `POST` | Lưu mục tiêu & danh sách nhắc nhở | `{ primaryGoal, reminderTime, reminders }` | 200, 401 |
 | `/api/export` | `GET` | Xuất file CSV lịch sử | Không | 200, 401 |
 
 ---
@@ -204,10 +237,10 @@ npm test
 2. **`tests/validation.test.ts` (5 tests):** Kiểm tra các cận trên/dưới của dữ liệu đầu vào: giờ ngủ (1–18h), screen time (0–24h), game time (0–24h), vận động (0–1440p), tắt máy (0–360p), cầm máy (0–500), tâm trạng (1–5).
 3. **`tests/sleep-score.test.ts` (5 tests):** Kiểm tra trả về `null` khi `countSleep === 0`, tính điểm thói quen tốt (> 85), tính phạt thói quen xấu, cận ép [30, 99], và phân loại badge.
 4. **`tests/commitments.test.ts` (6 tests):** Kiểm tra validate tạo cam kết (ngày hợp lệ, cấm quá khứ, cấm > 90 ngày) và kiểm tra checkin (cấm checkin sớm trước hạn, cấm hủy cam kết đã xong).
-5. **`tests/fallback-ai.test.ts` (3 tests):** Kiểm tra cấu trúc HTML gợi ý AI (có đủ 3 thẻ `<li>`), kiểm tra nhận diện từ khóa của Chat engine, và kiểm tra độ dài thư động lực (250–350 từ).
+5. **`tests/fallback-ai.test.ts` (4 tests):** Kiểm tra cấu trúc HTML gợi ý AI (có đủ 3 thẻ `<li>`), nhận diện từ khóa của Chat engine, độ dài thư động lực (250–350 từ), và kiểm tra thư chào mừng cho học viên mới tinh 0 thói quen (không bịa đặt số ngày).
 6. **`tests/spec-compliance.test.ts` (2 tests):** Kiểm tra `HISTORY_DAYS === 10` theo spec `003-history-pagination` và kiểm tra chặn ngày quá khứ trong `/api/suggest` theo spec `004-backdate-entry` FR-005.
 
-**Kết quả thực tế:** `27/27 tests PASS (100%)`, thời gian chạy ~450ms.
+**Kết quả thực tế:** `28/28 tests PASS (100%)`, thời gian chạy ~300ms.
 
 ---
 

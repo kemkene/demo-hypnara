@@ -82,10 +82,11 @@ hypnara-demo/
 
 ---
 
-## 📖 Tài Liệu Hướng Dẫn Chi Tiết
+## 📖 Hệ Thống Tài Liệu Dự Án
 
-Vui lòng đọc file **[doc.md](doc.md)** để xem hướng dẫn chi tiết về:
-- Cách đăng ký tài khoản & lấy **DeepSeek API Key**.
-- Cách sử dụng tính năng **Trích xuất ảnh Screen Time OCR**.
-- Khám phá hệ thống **Gamification, Cấp độ, Huy hiệu & Lịch nhiệt độ 30 ngày (Heatmap)**.
-- Phân tích biểu đồ tương quan hành vi & tương tác với **AI Health Coach**.
+Dự án cung cấp bộ tài liệu hoàn chỉnh phục vụ giảng dạy, học tập, vận hành và demo:
+- 📑 **[TAI_LIEU_KY_THUAT.md](TAI_LIEU_KY_THUAT.md)**: Tài liệu kỹ thuật chuyên sâu (Kiến trúc hệ thống, Database Schema, Thuật toán Sleep Score, Biểu đồ SVG, Web Audio API, Unit Testing).
+- 🌙 **[HUONG_DAN_SU_DUNG.md](HUONG_DAN_SU_DUNG.md)**: Hướng dẫn sử dụng toàn bộ tính năng và hành trình người dùng từng bước.
+- 📘 **[HUONG_DAN_GIANG_DAY.md](HUONG_DAN_GIANG_DAY.md)**: Giáo trình và giáo án phân tích mã nguồn 8 bài học cho giáo viên & học sinh.
+- 🎬 **[KICH_BAN_QUAY_VIDEO.md](KICH_BAN_QUAY_VIDEO.md)**: Kịch bản full-flow từng giây (lời thoại, thao tác) để quay video giới thiệu sản phẩm.
+- 📄 **[doc.md](doc.md)**: Hướng dẫn nghiệp vụ chi tiết & lấy API Key DeepSeek.

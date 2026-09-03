@@ -63,20 +63,21 @@ hypnara-demo/
 │   ├── ReminderBanner.tsx        # Banner & Web Notification nhắc nhở đi ngủ đúng giờ
 │   ├── AuthModal.tsx             # Hộp thoại Đăng nhập / Đăng ký
 │   └── dashboard/
-│       └── TrendChart.tsx        # Biểu đồ đường SVG xu hướng 7/14/30 ngày
+│       └── TrendChart.tsx        # Biểu đồ cột ghép SVG hiện đại (3 cột, dải chuẩn WHO, bộ lọc)
 ├── lib/                          # Các Module xử lý nghiệp vụ chung (Backend Helpers)
 │   ├── db.ts                     # Kết nối PostgreSQL Pool & Khởi tạo Schema
 │   ├── auth.ts                   # Quản lý Cookie Session & Validate dữ liệu đầu vào
 │   ├── date.ts                   # Chuẩn hóa múi giờ VN (UTC+7) & tính streak độc lập
 │   ├── scoring.ts                # Thuật toán tính điểm Sleep Score (30–99 hoặc null)
 │   ├── deepseek.ts               # Điều phối DeepSeek API & hằng số HISTORY_DAYS = 10
-│   └── fallback-ai.ts            # Rule-Based AI Offline Engines (Gợi ý, Chat, Thư)
-├── tests/                        # 6 Bộ Unit Test Suites (27 tests, 100% PASS)
+│   ├── fallback-ai.ts            # Rule-Based AI Offline Engines (Gợi ý, Chat, Thư)
+│   └── notification.ts           # Động cơ chuông Web Audio (E5 ➔ B5) & Web Notification
+├── tests/                        # 6 Bộ Unit Test Suites (28 tests, 100% PASS)
 │   ├── date.test.ts              # Kiểm tra múi giờ VN, addDays, calculateStreak
 │   ├── validation.test.ts        # Kiểm tra validation form thói quen
 │   ├── sleep-score.test.ts       # Kiểm tra thuật toán Sleep Score & phân loại badge
 │   ├── commitments.test.ts       # Kiểm tra ràng buộc ngày cam kết & chống gian lận
-│   ├── fallback-ai.test.ts       # Kiểm tra rule-based suggestion, chat, letter
+│   ├── fallback-ai.test.ts       # Kiểm tra rule-based suggestion, chat, letter (kèm test 0 ngày)
 │   └── spec-compliance.test.ts   # Kiểm tra HISTORY_DAYS = 10 & spec FR-005
 ├── Dockerfile                    # Cấu hình đóng gói Container Docker
 ├── docker-compose.yml            # Dịch vụ Web App (Node 22) + Database (Postgres 16)
@@ -208,10 +209,27 @@ export async function getAiSuggestion(currentHabits, habitHistory, userProfile) 
 **Khái niệm học sinh cần nắm:**
 - Viết Unit Test độc lập không cần khởi động toàn bộ server.
 - Sử dụng thư viện chuẩn `node:test` và `node:assert/strict`.
-- Chạy 27 test cases bao phủ toàn bộ logic rủi ro cao:
+- Chạy 28 test cases bao phủ toàn bộ logic rủi ro cao:
   ```bash
   npm test
   ```
+
+---
+
+### 🔹 Bài 7: Trực Quan Hóa Dữ Liệu Thuần SVG & Động Cơ Chuông Web Audio API (`components/dashboard/TrendChart.tsx` & `lib/notification.ts`)
+
+**Khái niệm học sinh cần nắm:**
+- **Vẽ đồ họa bằng toán học thuần SVG**: Cách dùng SVG `<rect>`, `<line>`, `<defs>`, `<linearGradient>` để tự tạo biểu đồ cột ghép đa chỉ số với dải chuẩn WHO mà không cần thêm thư viện Chart cồng kềnh.
+- **Sắp xếp theo trục thời gian tăng dần (Chronological ASC)**: Dùng `localeCompare` để đảm bảo dữ liệu luôn hiển thị tuần tự từ ngày cũ đến ngày mới nhất.
+- **Tổng hợp âm thanh bằng Web Audio API**: Khởi tạo `AudioContext`, tạo 2 bộ dao động sóng sin (`OscillatorNode`) ở tần số $E_5 (659Hz)$ và $B_5 (987Hz)$, điều biến âm lượng qua `GainNode.exponentialRampToValueAtTime`. Kỹ thuật này giúp phát chuông đôi êm dịu mà không phụ thuộc vào bất kỳ file `.mp3` nào từ bên ngoài.
+
+---
+
+### 🔹 Bài 8: Đồng Bộ Trạng Thái Thời Gian Thực (Reactive State Sync) & Cô Lập Lỗi Trình Duyệt
+
+**Khái niệm học sinh cần nắm:**
+- **State Versioning Pattern (`dataVersion`)**: Giải quyết bài toán "Lưu dữ liệu ở Tab A nhưng Tab B vẫn giữ số liệu cũ". Bằng cách dùng biến phiên bản `dataVersion` trong Single Page Application (SPA), mọi hành động Lưu thói quen, Điểm danh hay Đổi mục tiêu đều lập tức kích hoạt làm mới số liệu ở tất cả các tab khác mà không cần người dùng bấm F5.
+- **Cô lập lỗi tiện ích trình duyệt (Extension Isolation)**: Lắng nghe ở tầng `<head>` để chặn (`stopImmediatePropagation`) các lỗi ném ra từ script của Chrome extension bên thứ ba (như Urban VPN, MetaMask...), bảo vệ Next.js Dev Error Overlay không bị kích hoạt nhầm lẫn.
 
 ---
 
@@ -219,4 +237,4 @@ export async function getAiSuggestion(currentHabits, habitHistory, userProfile) 
 
 1. **Bài tập 1 (Backend - Múi giờ)**: Viết test case mô phỏng người dùng ở múi giờ Tokyo (UTC+9) hoặc New York (UTC-5) nhập liệu lúc nửa đêm xem streak có bị lệch không.
 2. **Bài tập 2 (AI Engine - Nâng cao)**: Bổ sung thêm quy tắc phân tích mối tương quan giữa điểm tâm trạng (Mood Score 1-5) và số lần cầm máy (Phone Pickups) vào `lib/fallback-ai.ts`.
-3. **Bài tập 3 (Frontend - UX)**: Tạo thêm âm thanh chuông nhẹ (Web Audio API) khi Banner nhắc nhở đi ngủ xuất hiện lúc 22:00.
+3. **Bài tập 3 (Frontend - Web Audio)**: Thử nghiệm thay đổi tần số dao động trong `lib/notification.ts` để tạo hợp âm 3 nốt (ví dụ: Đô - Mi - Sol) cho thông báo chúc mừng hoàn thành chuỗi kỷ luật 7 ngày.
