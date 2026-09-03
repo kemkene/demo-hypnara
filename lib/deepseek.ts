@@ -12,6 +12,35 @@ const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
 
+export interface ApiKeyNotice {
+  status: 'missing' | 'error';
+  message: string;
+  guide: {
+    step1: string;
+    step2: string;
+    step3: string;
+    step4: string;
+    url: string;
+  };
+}
+
+export function createApiKeyNotice(reason: 'missing' | 'error', detail?: string): ApiKeyNotice {
+  return {
+    status: reason,
+    message:
+      reason === 'missing'
+        ? 'Chưa cấu hình DEEPSEEK_API_KEY trong file .env. Hệ thống đang sử dụng Bộ máy AI Offline (Rule-based) để duy trì tính năng.'
+        : `DeepSeek Cloud API không phản hồi (${detail || 'Lỗi API Key hoặc hết hạn mức'}). Đã tự động chuyển sang Bộ máy AI Offline.`,
+    guide: {
+      step1: 'Truy cập trang quản trị DeepSeek: https://platform.deepseek.com và đăng nhập / đăng ký tài khoản.',
+      step2: 'Vào mục "API Keys" ở thanh menu bên trái, bấm "Create new API key" và sao chép mã khóa bí mật (dạng sk-...).',
+      step3: 'Mở file .env tại thư mục gốc dự án hypnara-demo, thêm hoặc sửa dòng: DEEPSEEK_API_KEY=sk-xxxxxx',
+      step4: 'Khởi động lại ứng dụng. Các tính năng AI sẽ tự động kích hoạt trực tiếp từ DeepSeek Cloud.',
+      url: 'https://platform.deepseek.com/api_keys',
+    },
+  };
+}
+
 export async function callDeepSeekAPI(messages: any[], temperature = 0.7): Promise<string> {
   if (!DEEPSEEK_API_KEY) {
     throw new Error('Chưa cấu hình DEEPSEEK_API_KEY trong file .env');
@@ -81,13 +110,15 @@ Hãy phân tích xu hướng và đưa ra gợi ý tối ưu giấc ngủ & Digi
 }
 
 /**
- * High-resilience AI Suggestion with automatic Rule-Based fallback.
+ * High-resilience AI Suggestion with automatic Rule-Based fallback and API Key guidance.
  */
 export async function getAiSuggestion(
   currentHabits: HabitEntry,
   habitHistory: HabitEntry[] = [],
   userProfile: UserProfile | null = null
-): Promise<{ suggestion: string; isOffline: boolean }> {
+): Promise<{ suggestion: string; isOffline: boolean; notice?: ApiKeyNotice }> {
+  let notice: ApiKeyNotice | undefined = undefined;
+
   if (DEEPSEEK_API_KEY) {
     try {
       const userPrompt = buildUserPrompt(currentHabits, habitHistory, userProfile);
@@ -106,23 +137,28 @@ Yêu cầu định dạng phản hồi HTML ngắn gọn (dùng các thẻ <p>, 
       return { suggestion, isOffline: false };
     } catch (err: any) {
       console.warn('[Hypnara AI] DeepSeek API failed, falling back to rule-based offline engine:', err.message);
+      notice = createApiKeyNotice('error', err.message);
     }
+  } else {
+    notice = createApiKeyNotice('missing');
   }
 
   // Seamless offline fallback
   const suggestion = generateRuleBasedSuggestion(currentHabits, habitHistory, userProfile);
-  return { suggestion, isOffline: true };
+  return { suggestion, isOffline: true, notice };
 }
 
 /**
- * High-resilience AI Chat with automatic Rule-Based fallback.
+ * High-resilience AI Chat with automatic Rule-Based fallback and API Key guidance.
  */
 export async function getAiChatReply(
   messages: Array<{ role: string; content: string }>,
   habits: HabitEntry[] = [],
   profile: UserProfile | null = null,
   username: string = 'học viên'
-): Promise<{ reply: string; isOffline: boolean }> {
+): Promise<{ reply: string; isOffline: boolean; notice?: ApiKeyNotice }> {
+  let notice: ApiKeyNotice | undefined = undefined;
+
   if (DEEPSEEK_API_KEY) {
     try {
       const habitContext =
@@ -155,23 +191,27 @@ Hãy tư vấn thân thiện, ngắn gọn (dưới 200 từ), tập trung vào 
       return { reply, isOffline: false };
     } catch (err: any) {
       console.warn('[Hypnara AI] DeepSeek Chat API failed, falling back to rule-based engine:', err.message);
+      notice = createApiKeyNotice('error', err.message);
     }
+  } else {
+    notice = createApiKeyNotice('missing');
   }
 
   // Seamless offline fallback
   const reply = generateRuleBasedChat(messages, habits, profile, username);
-  return { reply, isOffline: true };
+  return { reply, isOffline: true, notice };
 }
 
 /**
- * High-resilience AI Motivational Letter with automatic Rule-Based fallback.
+ * High-resilience AI Motivational Letter with automatic Rule-Based fallback and API Key guidance.
  */
 export async function getAiMotivationalLetter(
   username: string,
   profile: UserProfile | null,
   habits: HabitEntry[] = []
-): Promise<{ letter: string; isOffline: boolean }> {
+): Promise<{ letter: string; isOffline: boolean; notice?: ApiKeyNotice }> {
   const totalEntries = habits.length;
+  let notice: ApiKeyNotice | undefined = undefined;
 
   if (DEEPSEEK_API_KEY) {
     try {
@@ -207,10 +247,13 @@ ${habits.map((h: any) => `- Ngày ${h.date}: Ngủ ${h.sleepHours || '?'}h, Scre
       return { letter, isOffline: false };
     } catch (err: any) {
       console.warn('[Hypnara AI] DeepSeek Letter API failed, falling back to rule-based engine:', err.message);
+      notice = createApiKeyNotice('error', err.message);
     }
+  } else {
+    notice = createApiKeyNotice('missing');
   }
 
   // Seamless offline fallback
   const letter = generateRuleBasedMotivationalLetter(username, profile, habits);
-  return { letter, isOffline: true };
+  return { letter, isOffline: true, notice };
 }

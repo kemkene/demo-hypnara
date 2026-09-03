@@ -33,9 +33,9 @@ export async function POST(request: Request) {
     const habitHistory = historyRes.rows.map(habitRowToJSON);
     const userProfile = profileRes.rows[0] || null;
 
-    const { suggestion, isOffline } = await getAiSuggestion(currentHabits, habitHistory, userProfile);
+    const { suggestion, isOffline, notice } = await getAiSuggestion(currentHabits, habitHistory, userProfile);
 
-    return NextResponse.json({ suggestion, isOffline });
+    return NextResponse.json({ suggestion, isOffline, notice });
   } catch (err: any) {
     console.error('Lỗi suggest API:', err);
     return NextResponse.json({ error: 'Lỗi lấy gợi ý AI: ' + err.message }, { status: 500 });

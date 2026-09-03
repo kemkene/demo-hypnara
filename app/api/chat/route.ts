@@ -19,8 +19,8 @@ export async function POST(request: Request) {
     const habits = habitsRes.rows.map(habitRowToJSON);
     const profile = profileRes.rows[0] || null;
 
-    const { reply, isOffline } = await getAiChatReply(messages, habits, profile, username);
-    return NextResponse.json({ reply, isOffline });
+    const { reply, isOffline, notice } = await getAiChatReply(messages, habits, profile, username);
+    return NextResponse.json({ reply, isOffline, notice });
   } catch (err: any) {
     console.error('Lỗi chat API:', err);
     return NextResponse.json({ error: 'Lỗi trợ lý AI: ' + err.message }, { status: 500 });

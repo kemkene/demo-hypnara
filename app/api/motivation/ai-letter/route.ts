@@ -17,9 +17,9 @@ export async function POST() {
     const habits = habitsRes.rows.map(habitRowToJSON);
     const profile = profileRes.rows[0] || null;
 
-    const { letter, isOffline } = await getAiMotivationalLetter(username, profile, habits);
+    const { letter, isOffline, notice } = await getAiMotivationalLetter(username, profile, habits);
 
-    return NextResponse.json({ letter, isOffline });
+    return NextResponse.json({ letter, isOffline, notice });
   } catch (err: any) {
     console.error('Lỗi tạo thư động lực:', err);
     return NextResponse.json({ error: 'Lỗi tạo thư động lực từ AI: ' + err.message }, { status: 500 });

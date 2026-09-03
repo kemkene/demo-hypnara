@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Calendar, Sparkles, ChevronLeft, ChevronRight, Save, Copy, PlusCircle } from 'lucide-react';
+import { Calendar, Sparkles, ChevronLeft, ChevronRight, Save, Copy, PlusCircle, AlertTriangle, ExternalLink } from 'lucide-react';
 
 export default function HabitsTab({ user, prefillData }: { user: string | null; prefillData?: any }) {
   const todayStr = typeof window !== 'undefined'
@@ -26,6 +26,7 @@ export default function HabitsTab({ user, prefillData }: { user: string | null; 
   const [message, setMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [aiSuggestion, setAiSuggestion] = useState('');
+  const [aiNotice, setAiNotice] = useState<any>(null);
   const [createdCommitmentMsg, setCreatedCommitmentMsg] = useState('');
 
   // History Pagination
@@ -166,6 +167,7 @@ export default function HabitsTab({ user, prefillData }: { user: string | null; 
       }
 
       setAiSuggestion(data.suggestion);
+      setAiNotice(data.notice || null);
     } catch (err: any) {
       setErrorMessage(err.message);
     } finally {
@@ -401,6 +403,32 @@ export default function HabitsTab({ user, prefillData }: { user: string | null; 
             {createdCommitmentMsg && (
               <div style={{ color: '#34d399', fontSize: 12.5, fontWeight: 700, marginBottom: 10 }}>{createdCommitmentMsg}</div>
             )}
+
+            {aiNotice && (
+              <div style={{ marginBottom: 14, padding: '12px 14px', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fbbf24', fontWeight: 700, fontSize: 13 }}>
+                    <AlertTriangle size={16} /> {aiNotice.message}
+                  </div>
+                  <a
+                    href={aiNotice.guide.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: 12, color: '#fde68a', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    Tạo API Key DeepSeek miễn phí <ExternalLink size={12} />
+                  </a>
+                </div>
+                <div style={{ marginTop: 8, fontSize: 12, color: '#fef3c7', opacity: 0.95, lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 3 }}>📖 Hướng dẫn cấu hình DeepSeek API Key:</div>
+                  <div>1. {aiNotice.guide.step1}</div>
+                  <div>2. {aiNotice.guide.step2}</div>
+                  <div>3. {aiNotice.guide.step3}</div>
+                  <div>4. {aiNotice.guide.step4}</div>
+                </div>
+              </div>
+            )}
+
             <div style={{ fontSize: 13.5, lineHeight: 1.7, color: '#e0f2fe' }} dangerouslySetInnerHTML={{ __html: aiSuggestion }} />
           </div>
         )}
