@@ -1,15 +1,28 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Moon, Monitor, Gamepad2, Activity, Smartphone, Smile, Sparkles, CheckCircle2, Circle, Target, Bell } from 'lucide-react';
+import { Moon, Monitor, Gamepad2, Activity, Smartphone, Smile, Sparkles, CheckCircle2, Circle, Target, Bell, Plus, X, Check } from 'lucide-react';
 import TrendChart from '@/components/dashboard/TrendChart';
+
+const PRESET_GOALS = [
+  'Tối ưu giấc ngủ 7.0 - 9.0h / đêm',
+  'Tắt máy trước khi ngủ ít nhất 30 phút',
+  'Giảm thời gian xem màn hình & chơi game',
+  'Tăng vận động thể thao ≥ 150 phút / tuần',
+  'Cố định giờ đi ngủ trước 23:00',
+  'Không dùng thiết bị số trong phòng ngủ',
+];
 
 export default function OverviewTab({ user }: { user: string | null }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Profile Goal & Reminder state
-  const [primaryGoal, setPrimaryGoal] = useState('Tối ưu giấc ngủ 7-9h');
+  // Profile Goal & Reminder state (Supports multiple goals)
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([
+    'Tối ưu giấc ngủ 7.0 - 9.0h / đêm',
+    'Tắt máy trước khi ngủ ít nhất 30 phút',
+  ]);
+  const [customGoalInput, setCustomGoalInput] = useState('');
   const [reminderTime, setReminderTime] = useState('22:00');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSavedMsg, setProfileSavedMsg] = useState('');
@@ -34,7 +47,17 @@ export default function OverviewTab({ user }: { user: string | null }) {
       if (pfRes.ok) {
         const pfJson = await pfRes.json();
         if (pfJson.profile) {
-          if (pfJson.profile.primary_goal) setPrimaryGoal(pfJson.profile.primary_goal);
+          if (pfJson.profile.primary_goal) {
+            const parsed = pfJson.profile.primary_goal
+              .split(' • ')
+              .map((s: string) => s.trim())
+              .filter(Boolean);
+            if (parsed.length > 0) {
+              setSelectedGoals(parsed);
+            } else {
+              setSelectedGoals([pfJson.profile.primary_goal]);
+            }
+          }
           if (pfJson.profile.reminder_time) setReminderTime(pfJson.profile.reminder_time);
         }
       }
@@ -49,6 +72,30 @@ export default function OverviewTab({ user }: { user: string | null }) {
     fetchOverview();
   }, [user]);
 
+  const handleToggleGoal = (goal: string) => {
+    if (selectedGoals.includes(goal)) {
+      if (selectedGoals.length === 1) return;
+      setSelectedGoals(selectedGoals.filter((g) => g !== goal));
+    } else {
+      setSelectedGoals([...selectedGoals, goal]);
+    }
+  };
+
+  const handleAddCustomGoal = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = customGoalInput.trim();
+    if (!trimmed) return;
+    if (!selectedGoals.includes(trimmed)) {
+      setSelectedGoals([...selectedGoals, trimmed]);
+    }
+    setCustomGoalInput('');
+  };
+
+  const handleRemoveGoal = (goal: string) => {
+    if (selectedGoals.length <= 1) return;
+    setSelectedGoals(selectedGoals.filter((g) => g !== goal));
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -58,10 +105,13 @@ export default function OverviewTab({ user }: { user: string | null }) {
       const res = await fetch('/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ primaryGoal, reminderTime }),
+        body: JSON.stringify({
+          primaryGoal: selectedGoals.join(' • '),
+          reminderTime,
+        }),
       });
       if (res.ok) {
-        setProfileSavedMsg('✅ Đã lưu mục tiêu & nhắc nhở!');
+        setProfileSavedMsg('✅ Đã lưu mục tiêu & giờ nhắc nhở!');
         setTimeout(() => setProfileSavedMsg(''), 3000);
       }
     } catch (err) {
@@ -221,38 +271,123 @@ export default function OverviewTab({ user }: { user: string | null }) {
       {/* Onboarding Goal & Daily Reminder Widget */}
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="card-title" style={{ marginBottom: 14 }}>
-          <Target size={18} color="#06b6d4" /> Thiết Thiết Lập Mục Tiêu & Giờ Nhắc Nhở Nhập Nhật Ký
+          <Target size={18} color="#06b6d4" /> Thiết Lập Mục Tiêu & Giờ Nhắc Nhở Nhập Nhật Ký
         </div>
         {profileSavedMsg && (
           <div style={{ color: '#34d399', fontSize: 13, fontWeight: 700, marginBottom: 12 }}>{profileSavedMsg}</div>
         )}
-        <form onSubmit={handleSaveProfile} style={{ display: 'grid', gridTemplateColumns: '1fr 200px auto', gap: 12, alignItems: 'end' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Mục tiêu cá nhân ưu tiên</label>
-            <select
-              className="form-control"
-              value={primaryGoal}
-              onChange={(e) => setPrimaryGoal(e.target.value)}
-            >
-              <option value="Tối ưu giấc ngủ 7-9h">Tối ưu giấc ngủ 7.0 - 9.0h / đêm</option>
-              <option value="Giảm giờ dùng điện thoại & game">Giảm thời gian xem màn hình & chơi game</option>
-              <option value="Tắt máy trước khi ngủ 30 phút">Tắt máy trước khi ngủ ít nhất 30 phút</option>
-              <option value="Tăng vận động thể thao ≥ 150p/tuần">Tăng vận động thể thao ≥ 150 phút / tuần</option>
-            </select>
+
+        {/* Multi-goal selection section */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>
+            🎯 Mục tiêu cải thiện sức khỏe số (Có thể chọn nhiều mục tiêu cùng lúc):
+          </label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            {PRESET_GOALS.map((goal) => {
+              const isSelected = selectedGoals.includes(goal);
+              return (
+                <button
+                  key={goal}
+                  type="button"
+                  onClick={() => handleToggleGoal(goal)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 13px',
+                    borderRadius: 20,
+                    fontSize: 12.5,
+                    fontWeight: isSelected ? 600 : 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    border: isSelected ? '1px solid #06b6d4' : '1px solid rgba(255, 255, 255, 0.12)',
+                    background: isSelected ? 'rgba(6, 182, 212, 0.16)' : 'rgba(255, 255, 255, 0.04)',
+                    color: isSelected ? '#38bdf8' : '#cbd5e1',
+                    boxShadow: isSelected ? '0 0 10px rgba(6, 182, 212, 0.25)' : 'none',
+                  }}
+                >
+                  {isSelected ? <Check size={13} color="#38bdf8" /> : <Plus size={13} color="#94a3b8" />}
+                  {goal}
+                </button>
+              );
+            })}
           </div>
 
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Giờ nhắc nhở hàng ngày</label>
+          {/* Custom goal input */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 580 }}>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Nhập mục tiêu riêng (ví dụ: Không dùng điện thoại trên giường ngủ)..."
+              value={customGoalInput}
+              onChange={(e) => setCustomGoalInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddCustomGoal();
+                }
+              }}
+              style={{ fontSize: 12.5, padding: '7px 12px' }}
+            />
+            <button
+              type="button"
+              className="btn-action"
+              onClick={() => handleAddCustomGoal()}
+              style={{ padding: '7px 14px', fontSize: 12.5, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+            >
+              <Plus size={14} /> Thêm
+            </button>
+          </div>
+
+          {/* Selected goals list display */}
+          <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius-md)', border: '1px dashed rgba(255, 255, 255, 0.1)' }}>
+            <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>
+              Mục tiêu đã kích hoạt ({selectedGoals.length}):
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {selectedGoals.map((g) => (
+                <span
+                  key={g}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '4px 10px',
+                    borderRadius: 14,
+                    fontSize: 12,
+                    background: 'rgba(99, 102, 241, 0.2)',
+                    color: '#c7d2fe',
+                    border: '1px solid rgba(99, 102, 241, 0.35)',
+                  }}
+                >
+                  {g}
+                  {selectedGoals.length > 1 && (
+                    <X
+                      size={13}
+                      style={{ cursor: 'pointer', opacity: 0.7 }}
+                      onClick={() => handleRemoveGoal(g)}
+                    />
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveProfile} style={{ display: 'flex', gap: 14, alignItems: 'flex-end', flexWrap: 'wrap', paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div className="form-group" style={{ marginBottom: 0, minWidth: 200 }}>
+            <label style={{ fontSize: 12.5, marginBottom: 5 }}>⏰ Giờ nhắc nhở hàng ngày</label>
             <input
               type="time"
               className="form-control"
               value={reminderTime}
               onChange={(e) => setReminderTime(e.target.value)}
+              style={{ fontSize: 13 }}
             />
           </div>
 
-          <button type="submit" className="btn-primary" style={{ padding: '10px 16px' }} disabled={savingProfile}>
-            <Bell size={15} /> Lưu mục tiêu
+          <button type="submit" className="btn-primary" style={{ padding: '9px 18px', fontSize: 13 }} disabled={savingProfile}>
+            <Bell size={15} /> Lưu mục tiêu & giờ nhắc nhở
           </button>
         </form>
 
