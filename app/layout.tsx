@@ -20,6 +20,24 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined') {
+                window.addEventListener('error', function(e) {
+                  if (e.filename && (e.filename.includes('chrome-extension://') || e.filename.includes('moz-extension://'))) {
+                    e.stopImmediatePropagation();
+                  }
+                }, true);
+                window.addEventListener('unhandledrejection', function(e) {
+                  if (e.reason && (String(e.reason).includes('chrome-extension://') || (e.reason.stack && e.reason.stack.includes('chrome-extension://')))) {
+                    e.stopImmediatePropagation();
+                  }
+                }, true);
+              }
+            `,
+          }}
+        />
       </head>
       <body>{children}</body>
     </html>
