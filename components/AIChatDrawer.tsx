@@ -17,6 +17,7 @@ export default function AIChatDrawer({ isOpen, onClose, user }: AIChatDrawerProp
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [chatNotice, setChatNotice] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,6 +47,9 @@ export default function AIChatDrawer({ isOpen, onClose, user }: AIChatDrawerProp
       if (!res.ok) throw new Error(data.error || 'Lỗi trợ lý AI');
 
       setMessages([...newMessages, { role: 'assistant', content: data.reply }]);
+      if (data.notice) {
+        setChatNotice(data.notice);
+      }
     } catch (err: any) {
       setMessages([...newMessages, { role: 'assistant', content: 'Lỗi: ' + err.message }]);
     } finally {
@@ -58,7 +62,7 @@ export default function AIChatDrawer({ isOpen, onClose, user }: AIChatDrawerProp
   }
 
   return (
-    <div style={{ position: 'fixed', right: 20, bottom: 20, width: 380, height: 520, background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-focus)', zIndex: 200, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'fixed', right: 20, bottom: 20, width: 390, height: 530, background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-focus)', zIndex: 200, display: 'flex', flexDirection: 'column', boxShadow: '0 12px 36px rgba(0,0,0,0.6)' }}>
       <div style={{ padding: 14, background: 'rgba(0,0,0,0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontWeight: 700, fontSize: 14 }}>✨ Trợ lý AI Hypnara</span>
         <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>✕</button>
@@ -73,6 +77,18 @@ export default function AIChatDrawer({ isOpen, onClose, user }: AIChatDrawerProp
         {loading && <div style={{ fontSize: 12, color: 'var(--accent-cyan)' }}>Đang suy nghĩ...</div>}
         <div ref={messagesEndRef} />
       </div>
+
+      {chatNotice && (
+        <div style={{ padding: '8px 12px', background: 'rgba(245, 158, 11, 0.12)', borderTop: '1px solid rgba(245, 158, 11, 0.3)', fontSize: 11.5, color: '#fde68a' }}>
+          <div style={{ fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>⚠️ Đang dùng AI Offline</span>
+            <a href={chatNotice.guide.url} target="_blank" rel="noreferrer" style={{ color: '#67e8f9', textDecoration: 'underline' }}>Lấy DeepSeek Key →</a>
+          </div>
+          <div style={{ opacity: 0.9, marginTop: 3 }}>
+            Cấu hình <code>DEEPSEEK_API_KEY</code> trong <code>.env</code> để trò chuyện trực tiếp với DeepSeek Cloud.
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSend} style={{ padding: 12, display: 'flex', gap: 8 }}>
         <input
