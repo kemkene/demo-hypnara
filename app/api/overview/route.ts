@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
+import { calculateStreak, todayStr } from '@/lib/date';
+import { calculateSleepScore } from '@/lib/scoring';
 import { getDbPool, habitRowToJSON } from '@/lib/db';
 
 export async function GET() {
@@ -19,20 +21,8 @@ export async function GET() {
     const userProfile = profileResult.rows[0] || null;
     const totalCount = habits.length;
 
-    let habitStreak = 0;
-    if (habits.length > 0) {
-      const dates = new Set(habits.map((h: any) => h.date));
-      let checkDate = new Date();
-      const checkStr = checkDate.toISOString().slice(0, 10);
-      if (!dates.has(checkStr)) checkDate.setDate(checkDate.getDate() - 1);
-      while (true) {
-        const s = checkDate.toISOString().slice(0, 10);
-        if (dates.has(s)) {
-          habitStreak++;
-          checkDate.setDate(checkDate.getDate() - 1);
-        } else break;
-      }
-    }
+    const dates = new Set<string>(habits.map((h: any) => h.date));
+    const habitStreak = calculateStreak(dates, todayStr());
 
     const recent7 = habits.slice(0, 7);
     let sumSleep = 0, countSleep = 0;
@@ -72,22 +62,14 @@ export async function GET() {
 
     let mostFrequentTopApp = Object.keys(appCounts).sort((a, b) => appCounts[b] - appCounts[a])[0] || 'Chưa có';
 
-    let sleepScore = 85;
-    if (countSleep > 0) {
-      let penalty = 0;
-      if (avgSleep < 7) penalty += (7 - avgSleep) * 12;
-      else if (avgSleep > 9) penalty += (avgSleep - 9) * 6;
-
-      if (avgScreen > 6) penalty += (avgScreen - 6) * 4;
-      if (avgGame > 3) penalty += (avgGame - 3) * 5;
-      if (avgCutoff < 15) penalty += 10;
-      if (avgExercise < 20) penalty += 8;
-      else if (avgExercise >= 30) penalty -= 5;
-
-      sleepScore = Math.max(30, Math.min(99, Math.round(100 - penalty)));
-    } else {
-      sleepScore = 0;
-    }
+    const sleepScore = calculateSleepScore({
+      countSleep,
+      avgSleep,
+      avgScreen,
+      avgGame,
+      avgCutoff,
+      avgExercise,
+    });
 
     const correlations: any[] = [];
     const cutoffLow = habits.filter((h: any) => h.phoneCutoffMins !== null && h.phoneCutoffMins < 15 && parseFloat(h.sleepHours));

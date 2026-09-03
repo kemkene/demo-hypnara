@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
+import { yesterdayStr } from '@/lib/date';
 import { getDbPool, habitRowToJSON } from '@/lib/db';
 
 export async function GET() {
@@ -7,12 +8,10 @@ export async function GET() {
   if (!username) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
   try {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+    const yesterdayDate = yesterdayStr();
 
     const pool = await getDbPool();
-    const result = await pool.query('SELECT * FROM habits WHERE username = $1 AND date = $2', [username, yesterdayStr]);
+    const result = await pool.query('SELECT * FROM habits WHERE username = $1 AND date = $2', [username, yesterdayDate]);
 
     if (result.rows.length === 0) {
       return NextResponse.json({ habit: null });

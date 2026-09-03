@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
+import { calculateStreak, todayStr } from '@/lib/date';
 import { getDbPool, habitRowToJSON } from '@/lib/db';
 
 export async function GET() {
@@ -16,20 +17,8 @@ export async function GET() {
     const habits = habitsRes.rows.map(habitRowToJSON);
     const commitments = commitmentsRes.rows;
 
-    let habitStreak = 0;
-    if (habits.length > 0) {
-      const dates = new Set(habits.map((h: any) => h.date));
-      let checkDate = new Date();
-      const checkStr = checkDate.toISOString().slice(0, 10);
-      if (!dates.has(checkStr)) checkDate.setDate(checkDate.getDate() - 1);
-      while (true) {
-        const s = checkDate.toISOString().slice(0, 10);
-        if (dates.has(s)) {
-          habitStreak++;
-          checkDate.setDate(checkDate.getDate() - 1);
-        } else break;
-      }
-    }
+    const dates = new Set<string>(habits.map((h: any) => h.date));
+    const habitStreak = calculateStreak(dates, todayStr());
 
     const quotes = [
       { text: "Giấc ngủ là chiếc giường êm ái nhất cho những ai chiến thắng chính mình mỗi ngày.", author: "Khuyết danh" },

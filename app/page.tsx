@@ -8,6 +8,7 @@ import HabitsTab from '@/components/HabitsTab';
 import MotivationTab from '@/components/MotivationTab';
 import OCRTab from '@/components/OCRTab';
 import AIChatDrawer from '@/components/AIChatDrawer';
+import ReminderBanner from '@/components/ReminderBanner';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -60,6 +61,7 @@ export default function Home() {
       />
 
       <main>
+        <ReminderBanner user={user} onNavigateToHabits={() => setActiveTab('habits')} />
         {activeTab === 'overview' && <OverviewTab user={user} />}
         {activeTab === 'habits' && <HabitsTab user={user} prefillData={ocrPrefillData} />}
         {activeTab === 'motivation' && <MotivationTab user={user} />}

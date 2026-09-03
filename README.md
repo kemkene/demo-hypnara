@@ -43,7 +43,7 @@ docker-compose up --build
 ### 3. Truy Cập Ứng Dụng
 Mở trình duyệt tại địa chỉ: 👉 **[http://localhost:3000](http://localhost:3000)**
 
-*(Nếu chưa có API Key, hệ thống vẫn hoạt động đầy đủ với bộ quy tắc dự phòng rule-based offline).*
+*(Nếu chưa có API Key hoặc mất kết nối mạng, hệ thống vẫn hoạt động đầy đủ 100% nhờ bộ quy tắc dự phòng rule-based offline chuyên nghiệp tại `lib/fallback-ai.ts`).*
 
 ---
 
@@ -54,23 +54,30 @@ Mở trình duyệt tại địa chỉ: 👉 **[http://localhost:3000](http://lo
   - Nếu port 3000 đang bận: Kiểm tra bằng `lsof -i :3000` và tắt process cũ bằng `kill -9 <PID>`.
 - **Lỗi `ECONNREFUSED 127.0.0.1:5432`:**
   - Hãy đảm bảo database Postgres đã được khởi động bằng lệnh `docker-compose up -d db`.
-- **Lỗi `fetch is not defined` trên Node.js đời cũ (Node < 18):**
-  - Ứng dụng đã được tối ưu hóa bằng module chuẩn `https.request` của Node.js, tương thích hoàn toàn từ Node 14/16/18/20/22+.
 
 ---
 
-## 📂 Cấu Trúc Dự Án
+## 📂 Cấu Trúc Dự Án (Next.js App Router)
 
 ```text
 hypnara-demo/
-├── server.js               # Backend Pure Node.js (HTTP + PostgreSQL + DeepSeek API)
-├── public/
-│   └── index.html          # Single Page Application Dashboard (Vanilla JS + CSS)
-├── doc.md                  # Hướng dẫn chi tiết sử dụng ứng dụng & Đăng ký API Key
-├── Dockerfile              # Docker container build cho Node.js app
-├── docker-compose.yml      # Service PostgreSQL (db) & Application (app)
-├── .env.example            # Mẫu cấu hình biến môi trường
-└── package.json            # Cấu hình dự án & thư viện (pg)
+├── app/                        # Next.js App Router & API Route Handlers
+│   ├── api/                    # REST API endpoints (/api/suggest, /api/habits, /api/chat...)
+│   ├── globals.css             # Design system, CSS variables & tokens
+│   ├── layout.tsx              # Root HTML layout & font metadata
+│   └── page.tsx                # Trang điều khiển chính (Dashboard SPA)
+├── components/                 # React UI Components (Overview, Habits, Motivation, OCR...)
+├── lib/                        # Core backend services & utilities
+│   ├── auth.ts                 # Session auth & input validation
+│   ├── date.ts                 # Chuẩn hóa múi giờ VN (UTC+7) & tính toán streak
+│   ├── db.ts                   # PostgreSQL client pool & schema migrations
+│   ├── deepseek.ts             # DeepSeek API client & prompts
+│   └── fallback-ai.ts          # Rule-Based AI Offline Engines
+├── specs/                      # Đặc tả kỹ thuật và yêu cầu chức năng (FR-001 -> FR-005)
+├── tests/                      # Bộ Unit Test Suites chuẩn hóa
+├── Dockerfile                  # Multi-stage Docker container build
+├── docker-compose.yml          # Dịch vụ PostgreSQL và ứng dụng Next.js
+└── package.json                # Quản lý dependencies & scripts (test, build, dev)
 ```
 
 ---

@@ -91,10 +91,11 @@ export default function OverviewTab({ user }: { user: string | null }) {
   }
 
   const stats = data?.stats || {};
-  const sleepScore = stats.sleepScore || 0;
-  const strokeOffset = 440 - (440 * sleepScore) / 100;
+  const sleepScore: number | null = stats.sleepScore !== undefined && stats.sleepScore !== null ? stats.sleepScore : null;
+  const strokeOffset = sleepScore !== null ? 440 - (440 * sleepScore) / 100 : 440;
 
-  const getScoreBadge = (score: number) => {
+  const getScoreBadge = (score: number | null) => {
+    if (score === null) return { class: 'status-neutral', label: 'Chưa có dữ liệu' };
     if (score >= 85) return { class: 'status-excellent', label: 'Xuất sắc' };
     if (score >= 70) return { class: 'status-good', label: 'Tốt' };
     if (score >= 50) return { class: 'status-fair', label: 'Trung bình' };
@@ -128,13 +129,15 @@ export default function OverviewTab({ user }: { user: string | null }) {
               />
             </svg>
             <div style={{ position: 'absolute', textAlign: 'center' }}>
-              <div className="score-number">{sleepScore}</div>
+              <div className="score-number">{sleepScore !== null ? sleepScore : '--'}</div>
               <div style={{ fontSize: 11, color: 'var(--text-sub)', fontWeight: 600 }}>/ 100</div>
             </div>
           </div>
           <div className={`score-status-badge ${badge.class}`}>{badge.label}</div>
           <p style={{ fontSize: 12, color: 'var(--text-sub)', margin: 0 }}>
-            {data?.streak > 0 ? `🔥 Chuỗi kỷ luật: ${data.streak} ngày liên tiếp` : 'Nhập thói quen hàng ngày để tăng điểm'}
+            {sleepScore !== null
+              ? (data?.streak > 0 ? `🔥 Chuỗi kỷ luật: ${data.streak} ngày liên tiếp` : 'Nhập thói quen hàng ngày để tăng điểm')
+              : 'Chưa có dữ liệu giấc ngủ 7 ngày qua. Hãy nhập thói quen để hệ thống tính điểm.'}
           </p>
         </div>
 
@@ -252,6 +255,28 @@ export default function OverviewTab({ user }: { user: string | null }) {
             <Bell size={15} /> Lưu mục tiêu
           </button>
         </form>
+
+        <div style={{ marginTop: 14, padding: '10px 14px', background: 'rgba(99, 102, 241, 0.08)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(99, 102, 241, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12.5, color: '#c7d2fe', flexWrap: 'wrap', gap: 10 }}>
+          <span>🔔 Hệ thống sẽ tự động kích hoạt thông báo lúc <strong>{reminderTime || '22:00'}</strong> mỗi tối để nhắc bạn rời màn hình & ghi nhật ký thói quen.</span>
+          {typeof window !== 'undefined' && 'Notification' in window && (
+            <button
+              type="button"
+              className="btn-action"
+              onClick={() => {
+                if (typeof Notification !== 'undefined') {
+                  Notification.requestPermission().then((permission) => {
+                    if (permission === 'granted') {
+                      new Notification('Hypnara', { body: '✅ Đã kích hoạt thông báo nhắc nhở thành công!' });
+                    }
+                  });
+                }
+              }}
+              style={{ fontSize: 11.5, padding: '5px 12px', background: 'rgba(99, 102, 241, 0.2)', color: '#fff', border: '1px solid rgba(99, 102, 241, 0.4)' }}
+            >
+              {typeof Notification !== 'undefined' && Notification.permission === 'granted' ? '✅ Thông báo Web: Đã bật' : '🔔 Bật thông báo Web'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Correlations Insights */}

@@ -4,9 +4,12 @@ import React, { useEffect, useState } from 'react';
 import { Calendar, Sparkles, ChevronLeft, ChevronRight, Save, Copy, PlusCircle } from 'lucide-react';
 
 export default function HabitsTab({ user, prefillData }: { user: string | null; prefillData?: any }) {
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = typeof window !== 'undefined'
+    ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
+    : new Date().toISOString().slice(0, 10);
 
   const [date, setDate] = useState(todayStr);
+  const isBackdate = date !== todayStr;
   const [sleepHours, setSleepHours] = useState('');
   const [screenTime, setScreenTime] = useState('');
   const [gameTime, setGameTime] = useState('');
@@ -128,6 +131,10 @@ export default function HabitsTab({ user, prefillData }: { user: string | null; 
 
   const handleGetAISuggestion = async () => {
     if (!user) return;
+    if (isBackdate) {
+      setErrorMessage(`Theo quy tắc hệ thống (Spec FR-005), gợi ý AI chỉ áp dụng cho dữ liệu ngày hôm nay (${todayStr}). Ngày quá khứ chỉ dùng lưu trữ lịch sử.`);
+      return;
+    }
     setAiLoading(true);
     setAiSuggestion('');
     setErrorMessage('');
@@ -350,7 +357,7 @@ export default function HabitsTab({ user, prefillData }: { user: string | null; 
             />
           </div>
 
-          <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+          <div style={{ display: 'flex', gap: 12, marginTop: 20, alignItems: 'center', flexWrap: 'wrap' }}>
             <button type="submit" className="btn-primary" disabled={saving}>
               <Save size={16} /> {saving ? 'Đang lưu...' : 'Lưu Thói Quen'}
             </button>
@@ -358,12 +365,25 @@ export default function HabitsTab({ user, prefillData }: { user: string | null; 
             <button
               type="button"
               className="btn-primary"
-              style={{ background: 'linear-gradient(135deg, #06b6d4, #10b981)' }}
+              style={{
+                background: isBackdate
+                  ? 'rgba(148, 163, 184, 0.2)'
+                  : 'linear-gradient(135deg, #06b6d4, #10b981)',
+                cursor: isBackdate ? 'not-allowed' : 'pointer',
+                opacity: isBackdate ? 0.6 : 1,
+              }}
               onClick={handleGetAISuggestion}
-              disabled={aiLoading}
+              disabled={aiLoading || isBackdate}
+              title={isBackdate ? 'Gợi ý AI chỉ áp dụng cho ngày hôm nay (FR-005)' : 'Nhận phân tích gợi ý từ AI'}
             >
               <Sparkles size={16} /> {aiLoading ? 'AI đang phân tích...' : 'Phân Tích AI DeepSeek'}
             </button>
+
+            {isBackdate && (
+              <span style={{ fontSize: 12, color: 'var(--accent-amber)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                ℹ️ Đang chọn ngày quá khứ: Chỉ lưu lịch sử, không tạo gợi ý AI (Spec FR-005).
+              </span>
+            )}
           </div>
         </form>
 

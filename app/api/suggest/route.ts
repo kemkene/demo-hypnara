@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser, todayStr, isValidDateStr } from '@/lib/auth';
 import { getDbPool, habitRowToJSON } from '@/lib/db';
-import { callDeepSeekAPI, buildUserPrompt } from '@/lib/deepseek';
+import { getAiSuggestion, HISTORY_DAYS } from '@/lib/deepseek';
 
 export async function POST(request: Request) {
   const username = getSessionUser();
@@ -9,37 +9,33 @@ export async function POST(request: Request) {
 
   try {
     const currentHabits = await request.json();
-    const targetDate = currentHabits.date ? String(currentHabits.date).trim() : todayStr();
+    const today = todayStr();
 
-    if (!isValidDateStr(targetDate)) {
-      return NextResponse.json({ error: 'Ngày không hợp lệ.' }, { status: 400 });
+    // Spec FR-005: AI suggestions are strictly for "today", not for backdated past entries
+    if (currentHabits.date && String(currentHabits.date).trim() !== today) {
+      return NextResponse.json(
+        {
+          error: `Gợi ý AI chỉ áp dụng cho dữ liệu ngày hôm nay (${today}). Không hỗ trợ gợi ý cho các ngày nhập bù trong quá khứ theo quy chuẩn nghiệp vụ (FR-005).`,
+        },
+        { status: 400 }
+      );
     }
 
     const pool = await getDbPool();
     const [historyRes, profileRes] = await Promise.all([
-      pool.query('SELECT * FROM habits WHERE username = $1 AND date < $2 ORDER BY date DESC LIMIT 14', [username, targetDate]),
+      pool.query(
+        'SELECT * FROM habits WHERE username = $1 AND date < $2 ORDER BY date DESC LIMIT $3',
+        [username, today, HISTORY_DAYS]
+      ),
       pool.query('SELECT * FROM user_profiles WHERE username = $1', [username]),
     ]);
 
     const habitHistory = historyRes.rows.map(habitRowToJSON);
     const userProfile = profileRes.rows[0] || null;
 
-    const userPrompt = buildUserPrompt(currentHabits, habitHistory, userProfile);
+    const { suggestion, isOffline } = await getAiSuggestion(currentHabits, habitHistory, userProfile);
 
-    const systemPrompt = `Bạn là Chuyên gia Tối ưu Giấc ngủ và Digital Wellbeing của Hypnara.
-Nhiệm vụ: Phân tích thói quen (ngủ, screen time, game, vận động, tắt điện thoại trước ngủ) và lịch sử của người dùng để đưa ra phản hồi khoa học, thực tế, dễ áp dụng.
-
-Yêu cầu định dạng phản hồi HTML ngắn gọn (dùng các thẻ <p>, <ul>, <li>, <strong>, <em>, không dùng markdown code block):
-1. **Phân tích ngắn**: Điểm sáng và nguy cơ (đặc biệt nhấn mạnh việc tắt máy trước ngủ & vận động).
-2. **3 Gợi ý hành động**: Cụ thể, khả thi ngay hôm nay.
-3. **Lời chúc / Động lực ngắn**.`;
-
-    const suggestion = await callDeepSeekAPI([
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ]);
-
-    return NextResponse.json({ suggestion });
+    return NextResponse.json({ suggestion, isOffline });
   } catch (err: any) {
     console.error('Lỗi suggest API:', err);
     return NextResponse.json({ error: 'Lỗi lấy gợi ý AI: ' + err.message }, { status: 500 });

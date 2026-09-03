@@ -1,17 +1,12 @@
 import { cookies } from 'next/headers';
+import { todayStr, isValidDateStr, yesterdayStr, addDays, calculateStreak } from './date';
+
+export { todayStr, isValidDateStr, yesterdayStr, addDays, calculateStreak };
 
 export function getSessionUser(): string | null {
   const cookieStore = cookies();
   const session = cookieStore.get('session');
   return session ? session.value : null;
-}
-
-export function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-export function isValidDateStr(s: any): boolean {
-  return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && s <= todayStr();
 }
 
 export function validateHabitInput(input: any): string[] {
