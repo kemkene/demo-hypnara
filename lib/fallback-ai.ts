@@ -197,6 +197,23 @@ export function generateRuleBasedMotivationalLetter(
   const goal = profile?.primary_goal || 'Làm chủ giấc ngủ và xây dựng lối sống số lành mạnh';
   const totalEntries = habits.length;
 
+  // Dedicated welcome letter for brand-new users with 0 recorded habits
+  if (totalEntries === 0) {
+    return `Thân gửi ${username},
+
+Chào mừng bạn đã gia nhập Hypnara và chính thức đặt những viên gạch đầu tiên cho hành trình làm chủ giấc ngủ cùng lối sống số lành mạnh!
+
+Trong một thế giới ngập tràn ánh sáng xanh và những chiếc màn hình luôn tìm cách tranh giành từng phút giây chú ý của bạn, quyết định dừng lại để lắng nghe và chăm sóc cho giấc ngủ của chính mình là một bước đi vô cùng dũng cảm. Rất nhiều người mong muốn thay đổi, nhưng chỉ những ai thực sự hành động như bạn mới có thể tạo nên bước ngoặt.
+
+Với mục tiêu lớn "${goal}", hôm nay là ngày khởi đầu đầy ý nghĩa. Bạn không cần phải thay đổi tất cả mọi thứ chỉ sau một đêm — điều kỳ diệu của kỷ luật bắt đầu từ những hành động rất nhỏ: đặt điện thoại cách xa giường ngủ 30 phút trước khi lên giường, hít thở sâu vài nhịp và ghi lại những chỉ số sinh hoạt đầu tiên của bạn vào ứng dụng tối nay.
+
+Đừng lo lắng về việc phải thật hoàn hảo. Chỉ cần mỗi tối trước khi đi ngủ, bạn dành ra 1 phút nhìn lại một ngày đã qua, bạn đang trao cho não bộ và tâm trí mình cơ hội quý giá nhất để được chữa lành và tái tạo năng lượng cho ngày mai.
+
+Tối nay, hãy dành tặng bản thân một giấc ngủ trọn vẹn, không ánh sáng xanh, không thông báo làm phiền. Ngày mai bạn sẽ thức dậy với tinh thần sảng khoái và sự tự tin cao nhất.
+
+Chúc ${username} một buổi tối bình yên và một giấc ngủ thật sâu!`;
+  }
+
   const validSleep = habits.map((h) => parseFloat(String(h.sleepHours || '0'))).filter((n) => n > 0);
   const avgSleep = validSleep.length > 0 ? (validSleep.reduce((a, b) => a + b, 0) / validSleep.length).toFixed(1) : null;
   const hasGoodCutoff = habits.some((h) => Number(h.phoneCutoffMins) >= 30);

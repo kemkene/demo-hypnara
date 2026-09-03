@@ -85,3 +85,18 @@ test('generateRuleBasedMotivationalLetter generates inspiring letter with proper
   const words = letter.trim().split(/\s+/).filter(Boolean);
   assert.ok(words.length >= 180 && words.length <= 450, `Expected 180-450 words, got ${words.length}`);
 });
+
+test('generateRuleBasedMotivationalLetter generates inspiring welcome letter for new users with 0 habits', () => {
+  const profile = { primary_goal: 'Tối ưu giấc ngủ 8 tiếng', reminder_time: '22:00' };
+  const letter = generateRuleBasedMotivationalLetter('truongnx2', profile, []);
+
+  assert.ok(letter.includes('truongnx2'));
+  assert.ok(letter.includes('Chào mừng bạn'));
+  assert.ok(letter.includes('khởi đầu'));
+  // Must NOT claim they used the app for 10 days or 0 days completed
+  assert.ok(!letter.includes('10 ngày'));
+  assert.ok(!letter.includes('0 ngày'));
+
+  const words = letter.trim().split(/\s+/).filter(Boolean);
+  assert.ok(words.length >= 180 && words.length <= 450, `Expected 180-450 words, got ${words.length}`);
+});

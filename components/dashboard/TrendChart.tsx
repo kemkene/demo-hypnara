@@ -14,7 +14,8 @@ export default function TrendChart({ chartData7 = [], chartData14 = [], chartDat
   const [hoveredPoint, setHoveredPoint] = useState<any | null>(null);
 
   const rawData = range === '7' ? chartData7 : range === '14' ? chartData14 : chartData30;
-  const data = [...rawData].reverse();
+  // Strictly sort by date ascending (oldest date on left -> newest date on right)
+  const data = [...rawData].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
   if (data.length === 0) {
     return (

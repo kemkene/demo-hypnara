@@ -138,10 +138,13 @@ export async function getAiChatReply(
       const systemPrompt = `Bạn là Trợ lý AI Hypnara — Chuyên gia giấc ngủ và thói quen sinh hoạt số.
 Học viên hiện tại: "${username}"
 Mục tiêu cá nhân: "${profile?.primary_goal || 'Tối ưu giấc ngủ'}"
-Thói quen 10 ngày gần nhất:
-${habitContext}
+${
+  habits.length > 0
+    ? `Lịch sử thói quen thực tế (${habits.length} ngày):\n${habitContext}`
+    : 'Tình trạng: Học viên mới tinh, chưa có dữ liệu nhật ký thói quen nào. Hãy chào đón và khích lệ họ ghi lại ngày đầu tiên.'
+}
 
-Hãy tư vấn thân thiện, ngắn gọn (dưới 200 từ), tập trung vào giải pháp cụ thể giúp cải thiện chất lượng giấc ngủ và làm chủ công nghệ.`;
+Hãy tư vấn thân thiện, ngắn gọn (dưới 200 từ), tập trung vào giải pháp cụ thể giúp cải thiện chất lượng giấc ngủ và làm chủ công nghệ. Không bịa đặt số ngày sử dụng nếu học viên chưa có dữ liệu.`;
 
       const apiMessages = [
         { role: 'system', content: systemPrompt },
@@ -168,21 +171,34 @@ export async function getAiMotivationalLetter(
   profile: UserProfile | null,
   habits: HabitEntry[] = []
 ): Promise<{ letter: string; isOffline: boolean }> {
+  const totalEntries = habits.length;
+
   if (DEEPSEEK_API_KEY) {
     try {
       const systemPrompt = `Bạn là Chuyên gia Tâm lý & Huấn luyện viên Kỷ luật Giấc ngủ Hypnara.
 Hãy viết một **Thư Động Lực Chân Thành & Truyền Cảm Hứng (Motivational Letter)** dài khoảng 250 - 350 từ gửi riêng cho người dùng "${username}".
 
 Cấu trúc thư:
-1. Lời chào ấm áp & ghi nhận sự nỗ lực duy trì kỷ luật.
-2. Nhận xét tinh tế dựa trên dữ liệu thật (thời lượng ngủ, screen time, thói quen tắt máy).
-3. Lời khuyên & thông điệp tiếp sức mạnh mẽ giúp học viên vượt qua sự mệt mỏi, làm chủ thiết bị số và kiên trì với mục tiêu lớn.
-4. Lời chúc buổi tối đầy năng lượng tích cực.`;
+1. Lời chào ấm áp & thông điệp tích cực.
+2. Đánh giá hoặc chào đón phù hợp với tình trạng dữ liệu:
+   - NẾU HỌC VIÊN CÓ 0 NGÀY (THÀNH VIÊN MỚI): Tuyệt đối KHÔNG ĐƯỢC nói họ đã theo app 10 ngày hay nhiều ngày. Hãy gửi lời chào mừng nồng nhiệt người bạn mới đến với Hypnara, khẳng định tầm quan trọng của bước chân đầu tiên và khích lệ họ nhập nhật ký thói quen đầu tiên tối nay để khởi động hành trình.
+   - NẾU HỌC VIÊN ĐÃ CÓ DỮ LIỆU: Chỉ ghi nhận chính xác ${totalEntries} ngày họ đã thực sự nhập, dựa trên dữ liệu thật (thời lượng ngủ, screen time, thói quen tắt máy).
+3. Lời khuyên & thông điệp tiếp sức mạnh mẽ giúp học viên làm chủ thiết bị số và kiên trì với mục tiêu lớn.
+4. Lời chúc buổi tối bình yên và giấc ngủ sâu.`;
 
-      const userPrompt = `Tên học viên: ${username}
+      let userPrompt = '';
+      if (totalEntries === 0) {
+        userPrompt = `Tên học viên: ${username}
 Mục tiêu cá nhân: ${profile?.primary_goal || 'Tối ưu giấc ngủ và kỷ luật bản thân'}
-Lịch sử thói quen 10 ngày qua:
-${habits.map((h: any) => `- ${h.date}: Ngủ ${h.sleepHours || '?'}h, ScreenTime ${h.screenTime || '?'}h, Cutoff ${h.phoneCutoffMins ?? '?'}p, Mood ${h.moodScore || h.mood || '?'}`).join('\n')}`;
+Tình trạng: THÀNH VIÊN MỚI TINH, CHƯA CÓ NGÀY NHẬT KÝ NÀO (0 ngày).
+Yêu cầu: Viết thư chào mừng thành viên mới, tuyệt đối không bịa đặt số ngày sử dụng hay nói họ đã dùng app 10 ngày. Hãy truyền cảm hứng để họ bắt đầu ghi nhận thói quen đầu tiên tối nay.`;
+      } else {
+        userPrompt = `Tên học viên: ${username}
+Mục tiêu cá nhân: ${profile?.primary_goal || 'Tối ưu giấc ngủ và kỷ luật bản thân'}
+Số ngày đã ghi nhật ký: ${totalEntries} ngày thực tế.
+Lịch sử các ngày:
+${habits.map((h: any) => `- Ngày ${h.date}: Ngủ ${h.sleepHours || '?'}h, ScreenTime ${h.screenTime || '?'}h, Cutoff ${h.phoneCutoffMins ?? '?'}p, Mood ${h.moodScore || h.mood || '?'}`).join('\n')}`;
+      }
 
       const letter = await callDeepSeekAPI([
         { role: 'system', content: systemPrompt },

@@ -172,9 +172,10 @@ export async function GET() {
         rate: completionRate,
         recent: commitments.slice(0, 5),
       },
-      chartData7: habits.slice(0, 7).reverse(),
-      chartData14: habits.slice(0, 14).reverse(),
-      chartData30: habits.slice(0, 30).reverse(),
+      // Sort chronologically ascending (oldest date -> newest date)
+      chartData7: [...habits.slice(0, 7)].sort((a: any, b: any) => (a.date || '').localeCompare(b.date || '')),
+      chartData14: [...habits.slice(0, 14)].sort((a: any, b: any) => (a.date || '').localeCompare(b.date || '')),
+      chartData30: [...habits.slice(0, 30)].sort((a: any, b: any) => (a.date || '').localeCompare(b.date || '')),
     });
   } catch (err: any) {
     console.error('Lỗi overview:', err);
