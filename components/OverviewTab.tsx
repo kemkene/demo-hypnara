@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Moon, Monitor, Gamepad2, Activity, Smartphone, Smile, Sparkles, CheckCircle2, Circle, Target, Bell, Plus, X, Check, Clock, Trash2, Volume2 } from 'lucide-react';
+import { Moon, Monitor, Gamepad2, Activity, Smartphone, Smile, Sparkles, CheckCircle2, Circle, Target, Bell, Plus, X, Check, Clock, Trash2, Volume2, AlertCircle } from 'lucide-react';
 import TrendChart from '@/components/dashboard/TrendChart';
+import { showHypnaraNotification, requestNotificationPermission, getNotificationPermissionStatus, playChimeSound } from '@/lib/notification';
 
 interface ReminderItem {
   id: string;
@@ -44,6 +45,10 @@ export default function OverviewTab({ user }: { user: string | null }) {
 
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSavedMsg, setProfileSavedMsg] = useState('');
+
+  // Floating Toast Notification feedback
+  const [testToast, setTestToast] = useState<{ type: 'success' | 'warning' | 'info'; title: string; desc: string } | null>(null);
+  const [permStatus, setPermStatus] = useState<string>('default');
 
   const fetchOverview = async () => {
     if (!user) {
@@ -158,17 +163,59 @@ export default function OverviewTab({ user }: { user: string | null }) {
     setNewReminderLabel('');
   };
 
-  const handleTestNotification = (customText?: string) => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') {
-          new Notification('🌙 Hypnara - Chuông Nhắc Nhở Thử Nghiệm', {
-            body: customText || '✅ Thông báo hoạt động tốt! Bạn sẽ nhận được chuông nhắc đúng các khung giờ đã cài đặt.',
-            icon: '/favicon.ico',
-          });
-        }
+  useEffect(() => {
+    setPermStatus(getNotificationPermissionStatus());
+  }, []);
+
+  const handleTestNotification = async (customText?: string) => {
+    const text = customText || 'Đã đến giờ tối ưu giấc ngủ! Hãy tạm dừng thiết bị số.';
+    const result = await showHypnaraNotification('🌙 Hypnara - Chuông Nhắc Nhở', text, true);
+    setPermStatus(result.permission);
+
+    if (result.permission === 'granted' && result.shown) {
+      setTestToast({
+        type: 'success',
+        title: '🔊 Đã phát chuông & Gửi thông báo Desktop!',
+        desc: `${text} (Kiểm tra góc màn hình máy tính của bạn)`,
+      });
+    } else if (result.permission === 'denied') {
+      setTestToast({
+        type: 'warning',
+        title: '🔊 Đã phát chuông! (Thông báo Desktop bị chặn)',
+        desc: result.message || 'Trình duyệt đang chặn thông báo. Bấm vào icon 🔒 ở đầu thanh URL > Cho phép thông báo (Notifications).',
+      });
+    } else {
+      setTestToast({
+        type: 'info',
+        title: '🔊 Đã phát chuông thử nghiệm!',
+        desc: 'Hãy bấm "Cho phép" (Allow) trên hộp thoại của trình duyệt để nhận thông báo tự động.',
       });
     }
+
+    setTimeout(() => {
+      setTestToast(null);
+    }, 6000);
+  };
+
+  const handleRequestPermission = async () => {
+    playChimeSound();
+    const status = await requestNotificationPermission();
+    setPermStatus(status);
+    if (status === 'granted') {
+      showHypnaraNotification('🌙 Hypnara', '✅ Đã kích hoạt chuông & thông báo Web thành công!', false);
+      setTestToast({
+        type: 'success',
+        title: '✅ Đã kích hoạt Thông Báo Web!',
+        desc: 'Hệ thống sẽ phát chuông và gửi thông báo đúng các khung giờ bạn đã chọn.',
+      });
+    } else if (status === 'denied') {
+      setTestToast({
+        type: 'warning',
+        title: '⚠️ Quyền thông báo đang bị Chặn',
+        desc: 'Vui lòng bấm vào icon 🔒 bên trái URL > Cho phép Thông báo (Allow Notifications).',
+      });
+    }
+    setTimeout(() => setTestToast(null), 6000);
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -232,6 +279,40 @@ export default function OverviewTab({ user }: { user: string | null }) {
 
   return (
     <div>
+      {/* Toast Notification Floating Feedback */}
+      {testToast && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 75,
+            right: 20,
+            zIndex: 9999,
+            maxWidth: 380,
+            background: testToast.type === 'success' ? '#064e3b' : testToast.type === 'warning' ? '#78350f' : '#1e1b4b',
+            border: `1px solid ${testToast.type === 'success' ? '#34d399' : testToast.type === 'warning' ? '#fbbf24' : '#818cf8'}`,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            borderRadius: 'var(--radius-md)',
+            padding: '12px 16px',
+            color: '#ffffff',
+            animation: 'slideDown 0.3s ease-out',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 10,
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 3 }}>{testToast.title}</div>
+            <div style={{ fontSize: 12, opacity: 0.9, lineHeight: 1.4 }}>{testToast.desc}</div>
+          </div>
+          <button
+            onClick={() => setTestToast(null)}
+            style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: 2 }}
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
+
       {/* Top Gauge & 6 Metrics */}
       <div className="dashboard-top-grid">
         <div className="card score-card">
@@ -641,24 +722,21 @@ export default function OverviewTab({ user }: { user: string | null }) {
                 <button
                   type="button"
                   className="btn-action"
-                  onClick={() => {
-                    if (typeof Notification !== 'undefined') {
-                      Notification.requestPermission().then((permission) => {
-                        if (permission === 'granted') {
-                          handleTestNotification('✅ Đã bật thông báo Web thành công! Bạn sẽ nhận thông báo khi đến giờ.');
-                        }
-                      });
-                    }
-                  }}
+                  onClick={handleRequestPermission}
                   style={{
                     fontSize: 12,
                     padding: '7px 14px',
-                    background: typeof Notification !== 'undefined' && Notification.permission === 'granted' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.2)',
-                    borderColor: typeof Notification !== 'undefined' && Notification.permission === 'granted' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(99, 102, 241, 0.4)',
-                    color: typeof Notification !== 'undefined' && Notification.permission === 'granted' ? '#34d399' : '#fff',
+                    background: permStatus === 'granted' ? 'rgba(16, 185, 129, 0.2)' : permStatus === 'denied' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)',
+                    borderColor: permStatus === 'granted' ? 'rgba(16, 185, 129, 0.4)' : permStatus === 'denied' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(99, 102, 241, 0.4)',
+                    color: permStatus === 'granted' ? '#34d399' : permStatus === 'denied' ? '#f87171' : '#fff',
                   }}
+                  title={permStatus === 'denied' ? 'Thông báo đang bị chặn trên trình duyệt' : 'Cấp quyền nhận chuông thông báo Web'}
                 >
-                  {typeof Notification !== 'undefined' && Notification.permission === 'granted' ? '✅ Thông báo Web: Đã bật' : '🔔 Bật thông báo Web'}
+                  {permStatus === 'granted'
+                    ? '✅ Thông báo Web: Đã bật'
+                    : permStatus === 'denied'
+                    ? '⚠️ Thông báo: Bị chặn (Xem hướng dẫn)'
+                    : '🔔 Bật thông báo Web'}
                 </button>
               )}
             </div>

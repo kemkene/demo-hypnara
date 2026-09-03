@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Bell, Moon, X, ArrowRight } from 'lucide-react';
+import { showHypnaraNotification } from '@/lib/notification';
 
 interface ReminderItem {
   id: string;
@@ -116,14 +117,15 @@ export default function ReminderBanner({ user, onNavigateToHabits }: ReminderBan
         setActiveReminder(due);
         setShowBanner(true);
 
-        // Web Notification trigger
-        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        // Web Notification trigger & Audio Chime
+        if (typeof window !== 'undefined') {
           const notifiedKey = `hypnara_notified_${today}_${due.id}_${due.time}`;
           if (!sessionStorage.getItem(notifiedKey)) {
-            new Notification('🌙 Hypnara - Nhắc Nhở Kỷ Luật', {
-              body: `Đã đến ${due.time}! ${due.label}`,
-              icon: '/favicon.ico',
-            });
+            showHypnaraNotification(
+              '🌙 Hypnara - Nhắc Nhở Kỷ Luật',
+              `Đã đến ${due.time}! ${due.label}`,
+              true
+            );
             sessionStorage.setItem(notifiedKey, 'true');
           }
         }
